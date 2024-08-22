@@ -6,12 +6,12 @@ from sim_src.edge_label.gw_cut import cut_into_2_k
 from sim_src.ns3_ctrl.ns3_ctrl import build_ns3
 from sim_src.ns3_ctrl.wifi_net_ctrl import sim_wifi_net, wifi_net_config
 from sim_src.sim_env.path_loss import path_loss
-from sim_src.util import to_tensor, to_numpy, StatusObject, counted
+from sim_src.util import to_tensor, to_numpy, STATS_OBJECT, counted
 
 UDP_IP_WIFI_HEADER_SIZE = 64
 
 
-class sim_env_to_controller_interface(StatusObject):
+class sim_env_to_controller_interface(STATS_OBJECT):
     def init_env(self):
         pass
 

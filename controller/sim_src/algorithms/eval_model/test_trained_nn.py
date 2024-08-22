@@ -4,13 +4,13 @@ from os.path import expanduser
 
 from sim_src.edge_label.model.itl_bidirection_interference import itl_bidirection_interference
 from sim_src.sim_env.sim_env import sim_env
-from sim_src.util import ParameterConfig, StatusObject, GET_LOG_PATH_FOR_SIM_SCRIPT
+from sim_src.util import ParameterConfig, STATS_OBJECT, GET_LOG_PATH_FOR_SIM_SCRIPT
 
 INFER_PATH = "sim_src/algorithms/selected_nn/infer/infer.1999.pt"
 ACTOR_PATH = "sim_src/algorithms/selected_nn/training/actor_target.599.pt"
 CRITIC_PATH = "sim_src/algorithms/selected_nn/training/critic_target.599.pt"
 
-StatusObject.DISABLE_ALL_DEBUG = False
+STATS_OBJECT.DISABLE_ALL_DEBUG = False
 OUT_FOLDER = GET_LOG_PATH_FOR_SIM_SCRIPT(__file__)
 
 # the number of users and the number of groups can be varied by setting different twt_log2_n_slot and n_user in sim_env

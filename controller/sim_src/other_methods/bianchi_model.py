@@ -5,10 +5,10 @@ import numpy as np
 
 from sim_src.sim_env.path_loss import path_loss
 from sim_src.sim_env.sim_env import sim_env
-from sim_src.util import DbToRatio, StatusObject
+from sim_src.util import DbToRatio, STATS_OBJECT
 
 
-class bianchi_model(StatusObject):
+class bianchi_model(STATS_OBJECT):
     W = 15
     M = 6
     PACKET_SIZE = 100

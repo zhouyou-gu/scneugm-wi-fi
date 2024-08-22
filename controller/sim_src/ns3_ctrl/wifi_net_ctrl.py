@@ -5,7 +5,7 @@ import numpy as np
 from ns3gym import ns3env
 
 from sim_src.ns3_ctrl.ns3_ctrl import run_ns3, ns3_env
-from sim_src.util import StatusObject
+from sim_src.util import STATS_OBJECT
 
 
 class wifi_net_config:
@@ -33,7 +33,7 @@ class wifi_net_config:
         self.twtperiodicity = None
 
 
-class wifi_net_instance(StatusObject):
+class wifi_net_instance(STATS_OBJECT):
     def set_config(self, config):
         pass
 

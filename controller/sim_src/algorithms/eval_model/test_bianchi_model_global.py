@@ -8,7 +8,7 @@ import torch
 
 from sim_src.algorithms.test_model.run_test import run_test
 from sim_src.other_methods.bianchi_model import bianchi_model, sim_env_bianchi_model
-from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT, ParameterConfig, StatusObject
+from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT, ParameterConfig, STATS_OBJECT
 
 np.set_printoptions(threshold=5)
 np.set_printoptions(linewidth=1000)
@@ -16,7 +16,7 @@ np.set_printoptions(linewidth=1000)
 torch.set_printoptions(threshold=5)
 torch.set_printoptions(linewidth=1000)
 
-StatusObject.DISABLE_ALL_DEBUG = True
+STATS_OBJECT.DISABLE_ALL_DEBUG = True
 
 OUT_FOLDER = GET_LOG_PATH_FOR_SIM_SCRIPT(__file__)
 

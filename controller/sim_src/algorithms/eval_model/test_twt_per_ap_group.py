@@ -5,13 +5,13 @@ from os.path import expanduser
 import numpy as np
 
 from sim_src.sim_env.sim_env import sim_env
-from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT, StatusObject
+from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT, STATS_OBJECT
 
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
 
 OUT_FOLDER = GET_LOG_PATH_FOR_SIM_SCRIPT(__file__)
-StatusObject.DISABLE_ALL_DEBUG = False
+STATS_OBJECT.DISABLE_ALL_DEBUG = False
 
 class tmp_sim_env(sim_env):
     def format_act_to_sta_twt_idx(self, action):

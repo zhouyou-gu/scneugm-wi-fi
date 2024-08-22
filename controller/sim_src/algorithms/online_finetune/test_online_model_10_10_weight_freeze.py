@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from sim_src.edge_label.model.online_actor_no_weight_update_model import online_actor_no_weight_update_model
 from sim_src.sim_env.sim_env import sim_env
-from sim_src.util import ParameterConfig, StatusObject, GET_LOG_PATH_FOR_SIM_SCRIPT
+from sim_src.util import ParameterConfig, STATS_OBJECT, GET_LOG_PATH_FOR_SIM_SCRIPT
 
 INFER_PATH = "sim_src/algorithms/selected_nn/infer/infer.1999.pt"
 ACTOR_PATH = "sim_src/algorithms/selected_nn/training/actor_target.599.pt"
@@ -17,8 +17,8 @@ np.set_printoptions(linewidth=1000)
 torch.set_printoptions(threshold=5)
 torch.set_printoptions(linewidth=1000)
 
-StatusObject.DISABLE_ALL_DEBUG = True
-StatusObject.MOVING_AVERAGE_TIME_WINDOW = 20
+STATS_OBJECT.DISABLE_ALL_DEBUG = True
+STATS_OBJECT.MOVING_AVERAGE_TIME_WINDOW = 20
 OUT_FOLDER = GET_LOG_PATH_FOR_SIM_SCRIPT(__file__)
 
 from sim_src.algorithms.online_finetune.shared_config import user_mobility

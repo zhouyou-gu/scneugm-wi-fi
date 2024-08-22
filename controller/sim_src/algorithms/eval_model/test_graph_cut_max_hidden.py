@@ -7,7 +7,7 @@ import torch
 
 from sim_src.other_methods.graphcut_model import graphcut_hidden_model
 from sim_src.sim_env.sim_env import sim_env
-from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT, ParameterConfig, StatusObject
+from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT, ParameterConfig, STATS_OBJECT
 
 np.set_printoptions(threshold=5)
 np.set_printoptions(linewidth=1000)
@@ -15,7 +15,7 @@ np.set_printoptions(linewidth=1000)
 torch.set_printoptions(threshold=5)
 torch.set_printoptions(linewidth=1000)
 
-StatusObject.DISABLE_ALL_DEBUG = False
+STATS_OBJECT.DISABLE_ALL_DEBUG = False
 
 
 OUT_FOLDER = GET_LOG_PATH_FOR_SIM_SCRIPT(__file__)

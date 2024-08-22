@@ -8,11 +8,11 @@ from torch_geometric.data import Data
 from torch_geometric.utils import from_networkx, to_dense_adj
 
 from sim_src.edge_label.nn import INFNN, ELNN, WGNN
-from sim_src.util import USE_CUDA, hard_update_inplace, counted, StatusObject, soft_update_inplace, to_numpy, to_tensor, \
+from sim_src.util import USE_CUDA, hard_update_inplace, counted, STATS_OBJECT, soft_update_inplace, to_numpy, to_tensor, \
     to_device, p_true
 
 
-class learning_model(StatusObject):
+class learning_model(STATS_OBJECT):
     def step(self, batch):
         pass
 
