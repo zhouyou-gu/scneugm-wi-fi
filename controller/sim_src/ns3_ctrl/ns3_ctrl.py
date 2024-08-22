@@ -87,3 +87,32 @@ def configure_ns3(path_to_ns3, debug=True):
         sys.stdout.write(line)
 
     os.chdir(cwd)
+
+def install_ns3gym(path_to_ns3, path_to_controller,debug=True):
+    ns3gym_path = os.path.join(path_to_ns3,"contrib/opengym/model/ns3gym/ns3gym")
+    ns3gym_path_to = os.path.join(path_to_controller)
+
+    ns3_string = 'cp -r '+ ns3gym_path + ' ' + ns3gym_path_to
+
+    output = subprocess.DEVNULL
+    if debug:
+        output = None
+
+    ns3_proc = subprocess.Popen(ns3_string, shell=True, stdout=subprocess.PIPE, stderr=None, universal_newlines=True)
+
+    for line in ns3_proc.stdout:
+        sys.stdout.write(line)
+
+def remove_ns3gym(path_to_controller,debug=True):
+    ns3gym_path_to = os.path.join(path_to_controller,'ns3gym')
+
+    ns3_string = 'rm -rf '+ ns3gym_path_to
+
+    output = subprocess.DEVNULL
+    if debug:
+        output = None
+
+    ns3_proc = subprocess.Popen(ns3_string, shell=True, stdout=subprocess.PIPE, stderr=None, universal_newlines=True)
+
+    for line in ns3_proc.stdout:
+        sys.stdout.write(line)

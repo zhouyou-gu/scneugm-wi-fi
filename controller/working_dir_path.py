@@ -1,23 +1,16 @@
 import os
-from os.path import expanduser
-
-
-# add your path here as: default_path = "somepath/ac-grl-wi-fi";
-# otherwise, the codes assume the path is "~/ac-grl-wi-fi"
-default_path = None
-
+from os.path import dirname, abspath
 
 def get_working_dir_path():
-    if default_path == None:
-        home = expanduser("~")
-        path = os.path.join(home,"ac-grl-wi-fi")
-        return path
-    else:
-        return default_path
+    return dirname(abspath(__file__))
+
 def get_ns3_path():
-    path =  get_working_dir_path()
+    path = os.path.abspath(os.path.join(dirname(abspath(__file__)), os.pardir))
     return os.path.join(path,"ns-3-dev")
 
 def get_controller_path():
-    path =  get_working_dir_path()
-    return os.path.join(path,"controller")
+    return dirname(abspath(__file__))
+
+if __name__ == '__main__':
+    print(get_working_dir_path())
+    print(get_ns3_path())
