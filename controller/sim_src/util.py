@@ -99,6 +99,7 @@ class ParameterConfig(dict):
                 f.write('%15s, %s\n' % (key, value))
 
 class STATS_OBJECT:
+    ID = 0
     N_STEP = 0
     DISABLE_ALL_DEBUG = False
     DEBUG_STEP = 100
