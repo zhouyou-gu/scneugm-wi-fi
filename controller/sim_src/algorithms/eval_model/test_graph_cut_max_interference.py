@@ -9,7 +9,7 @@ import torch
 from sim_src.algorithms.test_model.run_test import run_test
 from sim_src.other_methods.bianchi_model import bianchi_model, sim_env_bianchi_model
 from sim_src.other_methods.graphcut_model import graphcut_interference_model
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT, ParameterConfig, STATS_OBJECT
 
 np.set_printoptions(threshold=5)

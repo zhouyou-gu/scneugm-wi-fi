@@ -3,7 +3,7 @@ import torch
 
 from sim_src.edge_label.model.base_model import *
 from sim_src.edge_label.nn import REGNN
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import p_true
 
 

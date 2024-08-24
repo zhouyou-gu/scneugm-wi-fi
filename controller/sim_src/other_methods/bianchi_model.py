@@ -3,8 +3,8 @@ import math
 import networkx as nx
 import numpy as np
 
-from sim_src.sim_env.path_loss import path_loss
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.env import path_loss
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import DbToRatio, STATS_OBJECT
 
 

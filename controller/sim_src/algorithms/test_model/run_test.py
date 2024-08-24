@@ -2,7 +2,7 @@ import os
 import random
 from os.path import expanduser
 
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import ParameterConfig, STATS_OBJECT
 from working_dir_path import *
 

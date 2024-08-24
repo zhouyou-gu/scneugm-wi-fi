@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from sim_src.other_methods.graphcut_model import graphcut_contention_model
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT, ParameterConfig, STATS_OBJECT
 
 np.set_printoptions(threshold=5)

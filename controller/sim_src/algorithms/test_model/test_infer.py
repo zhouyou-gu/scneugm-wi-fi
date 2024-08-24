@@ -8,7 +8,7 @@ import torch
 
 from sim_src.algorithms.test_model.run_test import run_test
 from sim_src.edge_label.model.infer_model import infer_model
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT
 
 np.set_printoptions(threshold=5)

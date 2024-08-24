@@ -11,7 +11,7 @@ from torch_geometric.utils import from_networkx
 from sim_src.edge_label.model.complete_model import complete_model
 from sim_src.edge_label.model.infer_then_label_model import infer_then_label_model
 from sim_src.edge_label.model.online_infer_model import online_infer_model
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT, ParameterConfig, to_device, to_tensor
 
 np.set_printoptions(threshold=5)

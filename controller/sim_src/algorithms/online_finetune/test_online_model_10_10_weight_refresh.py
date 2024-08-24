@@ -4,7 +4,7 @@ from os.path import expanduser
 import numpy as np
 import torch
 from sim_src.edge_label.model.online_actor_with_w_refresh_model import online_actor_with_w_refresh_model
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import ParameterConfig, STATS_OBJECT, GET_LOG_PATH_FOR_SIM_SCRIPT
 
 INFER_PATH = "sim_src/algorithms/selected_nn/infer/infer.1999.pt"

@@ -6,8 +6,8 @@ from torch_geometric.utils import from_networkx, to_dense_adj
 
 from sim_src.edge_label.gw_cut import cut_into_2_k
 from sim_src.edge_label.model.infer_model import infer_model
-from sim_src.sim_env.path_loss import path_loss
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.env import path_loss
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import STATS_OBJECT, to_numpy, to_tensor, \
     to_device, DbToRatio, RatioToDb
 

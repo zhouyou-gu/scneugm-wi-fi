@@ -3,7 +3,7 @@ import random
 from os.path import expanduser
 
 from sim_src.edge_label.model.itl_bidirection_interference import itl_bidirection_interference
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import ParameterConfig, STATS_OBJECT, GET_LOG_PATH_FOR_SIM_SCRIPT
 
 INFER_PATH = "sim_src/algorithms/selected_nn/infer/infer.1999.pt"

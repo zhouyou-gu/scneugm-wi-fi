@@ -8,7 +8,7 @@ from torch_geometric.utils import from_networkx
 
 from sim_src.edge_label.model.base_model import base_model
 from sim_src.ns3_ctrl.ns3_ctrl import build_ns3
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import to_tensor, to_numpy, get_current_time_str, ParameterConfig
 
 np.set_printoptions(threshold=5)

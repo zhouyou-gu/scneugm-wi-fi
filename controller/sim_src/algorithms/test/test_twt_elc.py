@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from sim_src.edge_label.model.base_model import base_model
 from sim_src.ns3_ctrl.ns3_ctrl import build_ns3
-from sim_src.sim_env.sim_env import sim_env
+from sim_src.sim_env.sim import sim_env
 from sim_src.util import get_current_time_str, ParameterConfig
 
 
