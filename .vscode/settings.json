@@ -12,5 +12,7 @@
     "files.exclude": {
       "**/*.pyc": {"when": "$(basename).py"}, 
       "**/__pycache__": true,
-    }
+    },
+    "cmake.sourceDirectory": "${workspaceFolder}/ns-3-dev",
+    "cmake.buildDirectory": "${workspaceFolder}/ns-3-dev/build-vscode",
   }

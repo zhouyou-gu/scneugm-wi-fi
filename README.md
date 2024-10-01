@@ -1,48 +1,9 @@
-# AC-GRL-WI-FI
+# SPARSE-GGM-WI-FI
 
-Codes for paper, "Graph Representation Learning for Contention and Interference Management in Wireless Networks." The manuscript is available at [IEEE Xplore](https://ieeexplore.ieee.org/abstract/document/10413982) and [arXiv](https://arxiv.org/abs/2402.00879).
+```bash
+cd controller
+```
 
-Author: Zhouyou Gu (zhouyou.gu@sydney.edu.au); 
-
-Supervisors: Wibowo Hardjawana (wibowo.hardjawana@sydney.edu.au); Branka Vucetic (branka.vucetic@sydney.edu.au);
-
-Collaborators: Kishore Chikkam and Pasquale Aliberti from Morse Micro, Sydney.
-
-*This project is developed at [Centre for IoT and Telecommunications](https://www.sydney.edu.au/engineering/our-research/internet-of-things/centre-for-iot-and-telecommunications.html) at The University of Sydney, 
-supported in part by The University of Sydney’s External Research Collaboration Seed Funding (Morse Micro), Deputy-Vice Chancellor (DVC) Research, in 2022. 
-The reference to our paper:*
-
-> ```
->@ARTICLE{gu2024graph,
->author={Gu, Zhouyou and Vucetic, Branka and Chikkam, Kishore and Aliberti, Pasquale and Hardjawana, Wibowo},
->journal={IEEE/ACM Transactions on Networking}, 
->title={Graph Representation Learning for Contention and Interference Management in Wireless Networks}, 
->year={2024},
->volume={32},
->number={3},
->pages={2479-2494},
->doi={10.1109/TNET.2024.3355935}}
-> ```
-
-
-### Package Dependency
-The following is a table of packages used in this project. 
-Note that packages with different versions may not be compatible in this project. 
-Please install the right version based on instructions on their corresponding websites.
-
-*This project needs a modified version of NS-3 and ns3gym [here](https://github.com/zhouyou-gu/ns-3-dev-ac-grl-wi-fi.git). Please install their prerequisites according to their original websites.
-
-(It is recommended to have a GPU for this project, but it can also run on CPU-only PCs.)
-
-| Packages             | Version            |
-|:---------------------|--------------------|
-| Ubuntu               | 20.04.1            |
-| Python               | 3.8.10             |
-| CMAKE                | 3.16.3             |
-| CVXPY (SCS backend)  | 1.14.1             |
-| PyTorch              | 1.12.0+cu116       |
-| PyTorch Geometric    | 2.1.0              |
-| nvidia-driver (CUDA) | 520.61.05 (11.8)   |
 
 ### Overall Code Structure
 
@@ -66,9 +27,7 @@ git submodule update --init --recursive
 
 Change the working directory to [controller](controller)
 
-```bash
-cd controller
-```
+
 
 (Optional) Now, you can have a test on whether the codes are correctly connected to the torch installation as 
 ```bash
