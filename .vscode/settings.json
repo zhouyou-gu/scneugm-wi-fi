@@ -1,12 +1,12 @@
 {
     "terminal.integrated.env.osx": {
-      "PYTHONPATH": "${workspaceFolder}",
+      "PYTHONPATH": "${workspaceFolder}/controller",
     },
     "terminal.integrated.env.linux": {
-      "PYTHONPATH": "${workspaceFolder}",
+      "PYTHONPATH": "${workspaceFolder}/controller",
     },
     "terminal.integrated.env.windows": {
-      "PYTHONPATH": "${workspaceFolder}",
+      "PYTHONPATH": "${workspaceFolder}/controller",
     },
     "python.envFile": "${workspaceFolder}/.env",
     "files.exclude": {
