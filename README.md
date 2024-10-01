@@ -1,7 +1,13 @@
 # SPARSE-GGM-WI-FI
 
 ```bash
-cd controller
+sudo apt-get update
+sudo apt-get install gcc g++ python3 python3-pip cmake
+sudo apt-get install libzmq5 libzmq3-dev
+sudo apt-get install libprotobuf-dev
+sudo apt-get install protobuf-compiler
+sudo apt-get install pkg-config
+
 ```
 
 
