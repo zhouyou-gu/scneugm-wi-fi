@@ -1,5 +1,8 @@
 # SPARSE-GGM-WI-FI
 
+### Installation
+Install the dependency of ns3 and ns3gym as
+
 ```bash
 sudo apt-get update
 sudo apt-get install gcc g++ python3 python3-pip cmake
@@ -10,6 +13,9 @@ sudo apt-get install pkg-config
 
 ```
 
+Install cuda, torch and PyG based on corresponding website.
+
+<span style="color:red">**If the modification on ns-3 submodule is needed, ensure that the submodule is checked out to one of the branch other than a detached head**</span>.
 
 ### Overall Code Structure
 

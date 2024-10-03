@@ -2,14 +2,46 @@ import math
 
 import numpy as np
 import scipy
-class env():
-    C = 299792458.0
-    PI = 3.14159265358979323846
-    HIDDEN_LOSS = 200.
-    NOISE_FLOOR_DBM = -94.
-    BOLTZMANN = 1.3803e-23
-    NOISEFIGURE = 13
-    def __init__(self, cell_edge = 20., cell_size = 20, sta_density_per_1m2 = 5e-3, fre_Hz = 5e9, txp_dbm_hi = 5., txp_offset = 2., min_s_n_ratio = 0.1, packet_bit = 800, bandwidth = 5e6, slot_time=1.25e-4, max_err = 1e-5, seed=1):
+
+from sim_src.sim_env.interference_helper import InterferenceHelper
+
+class WiFiNet(InterferenceHelper):
+    
+    """
+    this class implements an ap-sta network to setup wi-fi network simulation.
+    
+    """
+    STA_AP_LOSS_THREHOLD = 95
+    def __init__(self, cell_edge = 20., cell_size = 20, sta_density_per_1m2 = 5e-3, fre_Hz = 5.8e9, txp_dbm_hi = 5., min_s_n_ratio = 0.1, packet_bit = 800, bandwidth = 20e6, max_err = 1e-5, seed=1):
+        """
+        Initializes the simulation environment with the given parameters.
+
+        Parameters:
+        -----------
+        cell_edge : float
+            The edge length of a single cell in meters.
+        cell_size : int
+            The number of cells along one dimension of the grid.
+        sta_density_per_1m2 : float
+            The density of stations (STAs) per square meter.
+        fre_Hz : float
+            The frequency of the signal in Hertz.
+        txp_dbm_hi : float
+            The transmission power of the access points (APs) in dBm.
+        txp_offset : float
+            The offset to be applied to the transmission power.
+        min_s_n_ratio : float
+            The minimum signal-to-noise ratio required.
+        packet_bit : int
+            The size of each packet in bits.
+        bandwidth : float
+            The bandwidth of the signal in Hertz.
+        max_err : float
+            The maximum allowable error rate.
+        seed : int
+            Seed for random number generation.
+        """
+        
         self.rand_gen_loc = np.random.default_rng(seed)
         self.rand_gen_fad = np.random.default_rng(seed)
         self.rand_gen_mob = np.random.default_rng(seed)
@@ -27,13 +59,10 @@ class env():
         self.n_sta = int(self.cell_size**2 * self.sta_density_per_grid)
 
         self.fre_Hz = fre_Hz
-        self.lam = self.C / self.fre_Hz
         self.txp_dbm_hi = txp_dbm_hi
-        self.txp_offset = txp_offset
         self.min_s_n_ratio = min_s_n_ratio
         self.packet_bit = packet_bit
         self.bandwidth = bandwidth
-        self.slot_time = slot_time
         self.max_err = max_err
 
         self.ap_locs = None
@@ -47,8 +76,6 @@ class env():
         self._config_sta_locs()
         self._config_sta_dirs()
 
-        # print(self._compute_min_sinr())
-
     def get_loss_ap_ap(self):
         ret = np.zeros((self.n_ap,self.n_ap))
         for i in range(self.n_ap):
@@ -61,9 +88,9 @@ class env():
     def get_loss_sta_ap(self):
         ret = np.ones((self.n_sta,self.n_ap))*np.inf
         for i in range(self.n_sta):
-            while np.min(ret[i,:]) > 90:
-                for j in range(self.n_ap):
-                    ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.ap_locs[j],noise=True)
+            for j in range(self.n_ap):
+                ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.ap_locs[j])
+            #TODO: double check the losses of each STA so each STA has at least one AP can detect its signal.
         return ret
 
     def get_loss_sta_sta(self):
@@ -72,17 +99,61 @@ class env():
             for j in range(i,self.n_sta):
                 if i == j:
                     continue
-                ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.sta_locs[j],noise=True)
+                ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.sta_locs[j])
                 ret[j,i] = ret[i,j]
         return ret
 
-    def _get_loss_between_locs(self, a, b, noise=False):
+    def _get_loss_between_locs(self, a, b):
         dis = np.linalg.norm(np.array(a)-np.array(b),ord=2)
-        return self._get_loss_distance(dis, noise)
+        return self._get_loss_distance(dis)
 
-    def _get_loss_distance(self, dis, noise=False):
+    def _get_loss_distance(self, dis):
         #shadowing is disabled
-        return self.fre_dis_to_loss_dB(self.fre_Hz,dis)
+        return InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,dis)
+
+    def get_sta_states(self):
+        state_list = []
+        for k in range(self.n_sta):
+            tmp_list = []
+            for a in range(self.n_ap):
+                if self._get_loss_between_locs(self.sta_locs[k],self.ap_locs[a]) <= self.get_loss_sta_ap_threhold():
+                    t = (a,self.ap_locs[a][0],self.ap_locs[a][1],self._get_loss_between_locs(self.sta_locs[k],self.ap_locs[a]))
+                    tmp_list.append(t)
+            sorted(tmp_list, key=lambda x: x[3])
+            state_list.append(tmp_list)        
+        return state_list
+    
+    def get_interfering_node_matrix(self):
+        ret = np.zeros((self.n_sta,self.n_sta))
+        loss_sta_ap = self.get_loss_sta_ap()
+        asso = np.argmin(loss_sta_ap,axis=1)
+        S_gain = loss_sta_ap[:, asso]
+        ret[S_gain<=self.get_loss_sta_ap_threhold()] = 1   
+        return ret
+    
+    def get_contending_node_matrix(self):
+        ret = np.zeros((self.n_sta,self.n_sta))
+        loss_sta_sta = self.get_loss_sta_sta()
+        ret[loss_sta_sta<=self.get_loss_sta_sta_threhold()] = 1   
+        return ret
+    
+    def get_hidden_node_matrix(self):
+        I = self.get_interfering_node_matrix()
+        C = self.get_contending_node_matrix()
+        return np.logical_and(I.astype(bool) , np.logical_not(C.astype(bool))).astype(int)
+    
+    def get_loss_sta_ap_threhold(self):
+        #TODO: change it according to the rx sensitivity
+        return self.STA_AP_LOSS_THREHOLD
+    
+    def get_loss_sta_sta_threhold(self):
+        #TODO: change it according to the rx sensitivity
+        return self.STA_AP_LOSS_THREHOLD
+    
+    def convert_loss_sta_ap_threshold(self, loss):
+        ret = np.copy(loss)
+        ret[ret>self.get_loss_sta_ap_threhold()] = self.HIDDEN_LOSS
+        return ret
 
     def _config_ap_locs(self):
         x=np.linspace(0 + self.ap_offset, self.grid_edge - self.ap_offset, self.cell_size)
@@ -101,11 +172,6 @@ class env():
         dd = self.rand_gen_mob.standard_normal(2)
         return dd/np.linalg.norm(dd)
 
-    def _compute_min_sinr(self):
-        min_sinr_db = env.bisection_method(self.packet_bit,self.bandwidth,self.slot_time, self.max_err)
-        self.min_sinr = env.db_to_dec(min_sinr_db)
-        return self.min_sinr
-
     def rand_user_mobility(self, mobility_in_meter_s = 0., t_us = 0, resolution_us = 1.):
 
         if mobility_in_meter_s == 0. or t_us == 0.:
@@ -121,58 +187,33 @@ class env():
                 else:
                     self.sta_dirs[i] = self._get_random_dir()
 
-    @classmethod
-    def bandwidth_txpr_to_noise_dBm(cls, B):
-        return env.NOISE_FLOOR_DBM
-
-    @staticmethod
-    def fre_dis_to_loss_dB(fre_Hz, dis):
-        L = 20. * math.log10(fre_Hz/1e6) + 16 - 28
-        loss = L + 28 * np.log10(dis+1) # at least one-meter distance
-        return loss
-
-    @staticmethod
-    def db_to_dec(snr_db):
-        return 10.**(snr_db/10.)
-
-    @staticmethod
-    def dec_to_db(snr_dec):
-        return 10.* math.log10(snr_dec)
-
-    @staticmethod
-    def polyanskiy_model(snr_dec, L, B, T):
-        nu = - L * math.log(2.) + B * T * math.log(1+snr_dec)
-        do = math.sqrt(B * T * (1. - 1./((1.+snr_dec)**2)))
-        return scipy.stats.norm.sf(nu/do)
-
-    @staticmethod
-    def err(x, L, B, T, max_err):
-        snr = env.db_to_dec(x)
-        return env.polyanskiy_model(snr, L, B, T)/max_err - 1.
-
-    @staticmethod
-    def bisection_method(L, B, T, max_err=1e-5, a=-5., b=30., tol=0.1):
-
-        if env.err(a, L, B, T, max_err) * env.err(b, L, B, T, max_err) >= 0:
-            print("Bisection method fails.")
-            return None
-
-        while (env.err(a, L, B, T, max_err) - env.err(b, L, B, T, max_err)) > tol:
+    def check_cell_edge_snr(self):
+        l = InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,self.cell_edge/2*math.sqrt(2))
+        s_db = self.txp_dbm_hi - l - self.bandwidth_txpr_to_noise_dBm(self.bandwidth)
+        s_dec = InterferenceHelper.db_to_dec(s_db)
+        print("snr_db", s_db, "snr_dec", s_dec)
+        return
+    
+    def check_max_detectable_range(self):
+        min_snr_db = InterferenceHelper.dec_to_db(self.min_s_n_ratio)
+        l = self.txp_dbm_hi - min_snr_db - self.bandwidth_txpr_to_noise_dBm(self.bandwidth)
+        tol = 0.001
+        a = 0.01
+        b = self.cell_edge*self.cell_size
+        while abs(InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,b) - InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,a)) > tol:
             midpoint = (a + b) / 2
-            if env.err(midpoint, L, B, T, max_err) == 0:
-                return midpoint
-            elif env.err(a, L, B, T, max_err) * env.err(midpoint, L, B, T, max_err) < 0:
+            if InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,midpoint) == l:
+                break
+            elif (InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,a)-l) * (InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,midpoint)-l) < 0:
                 b = midpoint
             else:
                 a = midpoint
 
-        return (a + b) / 2
+        print("maximum detectable range", (a + b) / 2)
+        return 
 
 
-    def check_cell_edge_snr_err(self):
-        l = env.fre_dis_to_loss_dB(self.fre_Hz,self.cell_edge/2*math.sqrt(2))
-        s_db = self.txp_dbm_hi - l - env.bandwidth_txpr_to_noise_dBm(self.bandwidth)
-        s_dec = self.db_to_dec(s_db)
-        err = env.polyanskiy_model(s_dec,self.packet_bit,self.bandwidth,self.slot_time)
-        print("snr_db", s_db, "snr_dec", s_dec, "err", err)
-        return
+if __name__ == "__main__":
+    test_obj = WiFiNet()
+    test_obj.check_cell_edge_snr()   
+    test_obj.check_max_detectable_range()
