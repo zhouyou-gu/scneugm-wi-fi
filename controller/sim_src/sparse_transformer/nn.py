@@ -6,6 +6,7 @@ from torch_geometric.utils import softmax
 import torch_geometric as pyg
 
 from torch_geometric.nn import GCNConv, SAGEConv, TransformerConv
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pack_sequence, pad_sequence
 
 HIDDEN_DIM_MULTIPLIER = 10
 N_FIELD_KQMV = 4
@@ -18,32 +19,72 @@ def init_weights(m,gain=1.):
 
 
 class node_tokenizer(nn.Module):
-    def __init__(self, in_dim=3, token_dim=10):
-        nn.Module.__init__(self)
-
+    def __init__(self, input_dim, hidden_dim, latent_dim, num_layers=1):
+        super(node_tokenizer, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+        self.latent_dim = latent_dim
         # Encoder LSTM
-        self.encoder_lstm = nn.LSTM(in_dim, in_dim*HIDDEN_DIM_MULTIPLIER, batch_first=True)
-        self.fc_encoder = nn.Linear(in_dim*HIDDEN_DIM_MULTIPLIER, token_dim)
-
+        self.encoder_lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
+        # Latent space
+        self.latent = nn.Linear(hidden_dim, latent_dim)
         # Decoder LSTM
-        self.fc_decoder = nn.Linear(token_dim, in_dim*HIDDEN_DIM_MULTIPLIER)
-        self.decoder_lstm = nn.LSTM(in_dim*HIDDEN_DIM_MULTIPLIER, in_dim, batch_first=True)
+        self.decoder_lstm = nn.LSTM(latent_dim, hidden_dim, num_layers, batch_first=True)
+        # Output layer
+        self.output_layer = nn.Linear(hidden_dim, input_dim)
 
-    def forward(self, x):
-        # Encoding
-        z = self.encode(x)
-
-        # Decoding
-        h_dec = self.fc_decoder(z).unsqueeze(0)
-        output, _ = self.decoder_lstm(h_dec.repeat(x.size(1), 1, 1).permute(1, 0, 2))
-
+    def forward(self, x, lengths):
+        # Encode
+        z = self.encode(x, lengths)
+        # Decode
+        output = self.decode(z, lengths)
         return output
 
-    def encode(self, x):
-        _, (h_n, _) = self.encoder_lstm(x)
-        z = self.fc_encoder(h_n[-1])  # Take the final hidden state and pass it through the dense layer
+    def encode(self, x, lengths):
+        # Pack the padded sequence
+        packed_x = pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+        
+        # Encoder
+        _, (h_n, _) = self.encoder_lstm(packed_x)
+        # h_n: [num_layers, batch_size, hidden_dim]
+        h_n = h_n[-1]  # Take the last layer's hidden state
+        # h_n: [batch_size, hidden_dim]
+        
+        # Latent space
+        z = self.latent(h_n)
+        # z: [batch_size, latent_dim]
         return z
 
+    def decode(self, z, lengths):
+        batch_size = z.size(0)
+        max_seq_len = lengths.max().item()
+
+        # Prepare decoder inputs
+        decoder_input = torch.zeros(batch_size, max_seq_len, z.size(1), device=z.device)
+        for i, length in enumerate(lengths):
+            decoder_input[i, :length, :] = z[i].unsqueeze(0).repeat(length, 1)
+        
+        # Pack the decoder inputs
+        packed_decoder_input = pack_padded_sequence(decoder_input, lengths, batch_first=True, enforce_sorted=False)
+        
+        # Decoder
+        packed_decoder_output, _ = self.decoder_lstm(packed_decoder_input)
+        
+        # Unpack the decoder outputs
+        decoder_output, _ = pad_packed_sequence(packed_decoder_output, batch_first=True, total_length=max_seq_len)
+        # decoder_output: [batch_size, max_seq_len, hidden_dim]
+        
+        # Output
+        output = self.output_layer(decoder_output)
+        # output: [batch_size, max_seq_len, input_dim]
+        
+        return output
+
+    def pack_sequence(self, list_of_sequence):
+        train_lengths = [seq.size(0) for seq in list_of_sequence]
+        padded_train_sequences = pad_sequence(list_of_sequence, batch_first=True)
+        lengths = torch.tensor(train_lengths)
+        return padded_train_sequences, lengths
 
 class attention_layer_KQMV(nn.Module):
     def __init__(self, token_dim, embed_dim= 5, heads= 5, concat=True):
@@ -153,3 +194,12 @@ class sparser_transformer(nn.Module):
         tokens = F.normalize(x, p=2, dim=1)
 
         return tokens
+    
+    
+if __name__ == "__main__":
+    from torch.nn.utils.rnn import pack_sequence
+    a = torch.tensor([1, 2, 3])
+    b = torch.tensor([4, 5])
+    c = torch.tensor([6])
+    sq = pack_sequence([b, a, c],enforce_sorted=False)
+    print(sq)

@@ -7,6 +7,8 @@ from time import time
 
 import numpy as np
 import torch
+from torch.nn.utils.rnn import pad_sequence
+
 def p_true(probability_of_true):
     return np.random.choice([True, False], p=[probability_of_true, 1 - probability_of_true])
 
@@ -16,7 +18,8 @@ def DbToRatio(a):
 def RatioToDb(a):
     return 10.0 * math.log10(a)
 
-USE_CUDA = torch.cuda.is_available()
+CUDA_AVAILABLE = torch.cuda.is_available()
+USE_CUDA = CUDA_AVAILABLE
 FLOAT = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 LONG_TYPE = torch.cuda.LongTensor if USE_CUDA else torch.LongTensor
 
@@ -30,10 +33,16 @@ def to_tensor(ndarray, requires_grad=False, dtype=FLOAT):
         return t.type(dtype).to(torch.cuda.current_device())
     else:
         return t.type(dtype)
+
 def to_device(var):
     if USE_CUDA:
         return var.to(torch.cuda.current_device())
     return var
+
+def pad_tensor_sequence(list_of_tensor_sequence, batch_first = True):
+    train_lengths = [seq.size(0) for seq in list_of_tensor_sequence]
+    padded_train_sequences = pad_sequence(list_of_tensor_sequence, batch_first=batch_first)
+    return to_device(padded_train_sequences), train_lengths
 
 def cat_str_dot_txt(sl):
     ret = ""
@@ -99,7 +108,6 @@ class ParameterConfig(dict):
                 f.write('%15s, %s\n' % (key, value))
 
 class STATS_OBJECT:
-    ID = 0
     N_STEP = 0
     DISABLE_ALL_DEBUG = False
     DEBUG_STEP = 100
@@ -134,7 +142,7 @@ class STATS_OBJECT:
             data_path = os.path.join(path,data_name)
             np.savetxt(data_path, self.LOGGED_NP_DATA[key] , delimiter=',')
 
-    def _add_np_log(self, key, float_row_data, step=0,g_step=0):
+    def _add_np_log(self, key, step, float_row_data, g_step=0):
         if not self.INIT_LOGGED_NP_DATA:
             self.LOGGED_NP_DATA = {}
             self.INIT_LOGGED_NP_DATA = True
@@ -253,37 +261,6 @@ def GET_LOG_PATH_FOR_SIM_SCRIPT(sim_script_path):
     OUT_PER_SIM_FOLDER = os.path.join(OUT_ALL_SIM_FOLDER, SIM_NAME_TIME)
     return OUT_PER_SIM_FOLDER
 
-if __name__ == '__main__':
-    a = STATS_OBJECT()
-    # a.DEBUG = True
-    b = STATS_OBJECT()
-    # b.DEBUG = True
-    b._debug()
-
-    b._add_np_log("hello", np.ones(6))
-    b._moving_average("hello", 1.)
-
-    c = STATS_OBJECT()
-    print(a.DEBUG,c.DEBUG,b.DEBUG)
-    # c.DEBUG = 10
-    print(a.DEBUG,b.LOGGED_NP_DATA,c.LOGGED_NP_DATA)
-    print(a.DEBUG,b.MOVING_AVERAGE_DICT,c.MOVING_AVERAGE_DICT)
-    # cfg = ParameterConfig()
-    # cfg["x"] = 5
-    # cfg["x"] = 9
-    # OUT_FOLDER = os.path.splitext(os.path.basename(__file__))[0] + "-" + get_current_time_str()
-    # OUT_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), OUT_FOLDER)
-    # cfg.save(OUT_FOLDER,"hello")
-
-    # import time
-    # from multiprocessing import Process
-    #
-    #
-    # def func():
-    #     time.sleep(10000)
-    # p1 = Process(target=func, args=())
-    # p2 = Process(target=func, args=())
-    # p1.start()
-    # p2.start()
-    # p1.join()
-    # p2.join()
+def GET_FILE_NAME_FOR_SIM_SCRIPT(file):
+    FILE_NAME = os.path.splitext(os.path.basename(file))[0]
+    return FILE_NAME
