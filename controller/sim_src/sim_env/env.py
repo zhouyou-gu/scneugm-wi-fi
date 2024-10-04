@@ -11,8 +11,8 @@ class WiFiNet(InterferenceHelper):
     this class implements an ap-sta network to setup wi-fi network simulation.
     
     """
-    STA_AP_LOSS_THREHOLD = 95
-    def __init__(self, cell_edge = 20., cell_size = 20, sta_density_per_1m2 = 5e-3, fre_Hz = 5.8e9, txp_dbm_hi = 5., min_s_n_ratio = 0.1, packet_bit = 800, bandwidth = 20e6, max_err = 1e-5, seed=1):
+    STA_AP_LOSS_THREHOLD = 100
+    def __init__(self, cell_edge = 20., cell_size = 5, sta_density_per_1m2 = 10e-3, fre_Hz = 5.8e9, txp_dbm_hi = 5., min_s_n_ratio = 0.1, packet_bit = 800, bandwidth = 20e6, max_err = 1e-5, seed=1):
         """
         Initializes the simulation environment with the given parameters.
 
@@ -129,18 +129,22 @@ class WiFiNet(InterferenceHelper):
         asso = np.argmin(loss_sta_ap,axis=1)
         S_gain = loss_sta_ap[:, asso]
         ret[S_gain<=self.get_loss_sta_ap_threhold()] = 1   
+        np.fill_diagonal(ret,0)
         return ret
     
     def get_contending_node_matrix(self):
         ret = np.zeros((self.n_sta,self.n_sta))
         loss_sta_sta = self.get_loss_sta_sta()
         ret[loss_sta_sta<=self.get_loss_sta_sta_threhold()] = 1   
+        np.fill_diagonal(ret,0)
         return ret
     
     def get_hidden_node_matrix(self):
         I = self.get_interfering_node_matrix()
         C = self.get_contending_node_matrix()
-        return np.logical_and(I.astype(bool) , np.logical_not(C.astype(bool))).astype(int)
+        ret = np.logical_and(I.astype(bool) , np.logical_not(C.astype(bool))).astype(float)
+        np.fill_diagonal(ret,0)
+        return ret
     
     def get_loss_sta_ap_threhold(self):
         #TODO: change it according to the rx sensitivity
@@ -217,3 +221,19 @@ if __name__ == "__main__":
     test_obj = WiFiNet()
     test_obj.check_cell_edge_snr()   
     test_obj.check_max_detectable_range()
+    print(test_obj.get_sta_states()[0:5])
+    for k in test_obj.get_sta_states():
+        print(k.__len__())
+        print(k)
+
+    print(test_obj.n_ap,test_obj.n_sta)
+    print(test_obj._get_loss_distance(10*1.4))
+    print("get_contending_node_matrix",test_obj.get_contending_node_matrix().sum()/test_obj.n_sta)
+    print("get_hidden_node_matrix",test_obj.get_hidden_node_matrix().sum()/test_obj.n_sta)
+    print("get_interfering_node_matrix",test_obj.get_interfering_node_matrix().sum()/test_obj.n_sta)
+    print(np.logical_and(np.logical_not(test_obj.get_interfering_node_matrix().astype(bool)),test_obj.get_contending_node_matrix().astype(bool).astype(int)).sum()/test_obj.n_sta)
+    print(np.logical_and(np.logical_not(test_obj.get_contending_node_matrix().astype(bool)),test_obj.get_interfering_node_matrix().astype(bool).astype(int)).sum()/test_obj.n_sta)
+    print(test_obj.get_contending_node_matrix().diagonal().sum())
+    print(test_obj.get_hidden_node_matrix().diagonal().sum())
+    print(test_obj.get_interfering_node_matrix().diagonal().sum())
+    
