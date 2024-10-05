@@ -251,7 +251,7 @@ class CSV_WRITER_OBJECT:
 
 
 def GET_LOG_PATH_FOR_SIM_SCRIPT(sim_script_path):
-    OUT_ALL_SIM_FOLDER = os.path.splitext(os.path.basename(sim_script_path))[0]
+    OUT_ALL_SIM_FOLDER = "log-"+os.path.splitext(os.path.basename(sim_script_path))[0]
     OUT_ALL_SIM_FOLDER = os.path.join(os.path.dirname(os.path.realpath(sim_script_path)), OUT_ALL_SIM_FOLDER)
     try:
         os.mkdir(OUT_ALL_SIM_FOLDER)
