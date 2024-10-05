@@ -8,7 +8,8 @@ from sim_src.util import USE_CUDA, STATS_OBJECT, soft_update_inplace
 
 
 class base_model(STATS_OBJECT):
-    def __init__(self, LR =0.0001, TAU = 0.001):
+    def __init__(self,  LR = 0.0001, TAU = 0.001, WITH_TARGET = False):
+        self.WITH_TARGET = WITH_TARGET
         self.LR = LR
         self.TAU = TAU
         self.model = None
@@ -16,12 +17,16 @@ class base_model(STATS_OBJECT):
         self.model_optim = None
 
         self.init_model()
+        
+        self.model_optim = optim.Adam(self.model.parameters(), lr=self.LR)
 
         self.move_model_to_gpu()
+    
     def move_model_to_gpu(self):
         if USE_CUDA:
             self.model.to(torch.cuda.current_device())
-            self.model_target.to(torch.cuda.current_device())
+            if self.WITH_TARGET:
+                self.model_target.to(torch.cuda.current_device())
             print(self.__class__.__name__,"is on gpu")
         else:
             print(self.__class__.__name__,"is on cpu")
@@ -33,7 +38,8 @@ class base_model(STATS_OBJECT):
         if not path_target:
             path_target = path
         self.model = self._load(path)
-        self.model_target = self._load(path_target)
+        if self.WITH_TARGET:
+            self.model_target = self._load(path_target)
         self.model_optim = optim.Adam(self.model.parameters(), lr=self.LR)
 
     def _load(self, path):
@@ -41,8 +47,10 @@ class base_model(STATS_OBJECT):
             return torch.load(path, map_location=torch.device('cuda', torch.cuda.current_device()))
         else:
             return torch.load(path, map_location=torch.device('cpu'))
+    
     def update_nn(self):
-        soft_update_inplace(self.model_target, self.model, self.TAU)
+        if self.WITH_TARGET:
+            soft_update_inplace(self.model_target, self.model, self.TAU)
 
     def save(self, path: str, postfix: str):
         try:
@@ -50,8 +58,8 @@ class base_model(STATS_OBJECT):
         except:
             pass
         torch.save(self.model, os.path.join(path, self.__class__.__name__+ "." + postfix + ".pt"))
-        torch.save(self.model_target, os.path.join(path, self.__class__.__name__+ "_target." + postfix + ".pt"))
-
+        if self.WITH_TARGET:
+            torch.save(self.model_target, os.path.join(path, self.__class__.__name__+ "_target." + postfix + ".pt"))
 
     def step(self, batch):
         pass

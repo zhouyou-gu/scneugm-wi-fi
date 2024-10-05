@@ -117,11 +117,18 @@ class WiFiNet(InterferenceHelper):
             tmp_list = []
             for a in range(self.n_ap):
                 if self._get_loss_between_locs(self.sta_locs[k],self.ap_locs[a]) <= self.get_loss_sta_ap_threhold():
-                    t = (a,self.ap_locs[a][0],self.ap_locs[a][1],self._get_loss_between_locs(self.sta_locs[k],self.ap_locs[a]))
+                    t = [self.ap_locs[a][0],self.ap_locs[a][1],self._get_loss_between_locs(self.sta_locs[k],self.ap_locs[a])]
+                    t = self._normalize_sta_tuple(t)
                     tmp_list.append(t)
-            sorted(tmp_list, key=lambda x: x[3])
-            state_list.append(tmp_list)        
+            sorted(tmp_list, key=lambda x: x[-1])
+            state_list.append(np.asarray(tmp_list))
         return state_list
+    
+    def _normalize_sta_tuple(self,t):
+        t[0] = (t[0] - self.grid_edge/2.)/self.grid_edge
+        t[1] = (t[1] - self.grid_edge/2.)/self.grid_edge
+        t[2] = (t[2] - self.get_loss_sta_ap_threhold())/self.get_loss_sta_ap_threhold()
+        return t
     
     def get_interfering_node_matrix(self):
         ret = np.zeros((self.n_sta,self.n_sta))
@@ -236,4 +243,6 @@ if __name__ == "__main__":
     print(test_obj.get_contending_node_matrix().diagonal().sum())
     print(test_obj.get_hidden_node_matrix().diagonal().sum())
     print(test_obj.get_interfering_node_matrix().diagonal().sum())
+    
+    print(test_obj.get_sta_states()[0].shape)
     

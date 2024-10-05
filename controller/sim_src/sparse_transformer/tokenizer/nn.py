@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class node_tokenizer(nn.Module):
-    def __init__(self, input_dim, hidden_dim, latent_dim, num_layers=1):
+    def __init__(self, input_dim=3, hidden_dim=10, latent_dim=5, num_layers=1):
         super(node_tokenizer, self).__init__()
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers

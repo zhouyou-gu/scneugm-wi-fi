@@ -164,10 +164,10 @@ class STATS_OBJECT:
     def _print(self, *args, **kwargs):
         if self.DEBUG and not STATS_OBJECT.DISABLE_ALL_DEBUG and (
                 self.N_STEP % self.DEBUG_STEP == 0 or self.N_STEP % self.DEBUG_STEP == 1 or self.N_STEP % self.DEBUG_STEP == 2):
-            print(("%6d\t" % self.N_STEP) + " ".join(map(str, args)), **kwargs)
+            print(("%10s\t" % self.__class__.__name__) + ("STEP:%5d, " % self.N_STEP) +  " ".join(map(str, args)), **kwargs)
 
     def _printalltime(self, *args, **kwargs):
-        print(("%6d\t" % self.N_STEP) + ("%10s\t" % self.__class__.__name__) + " ".join(map(str, args)), **kwargs)
+        print(("%10s\t" % self.__class__.__name__) + ("STEP:%5d, " % self.N_STEP) +  " ".join(map(str, args)), **kwargs)
 
     def _moving_average(self, key, new_value):
         if not self.INIT_MOVING_AVERAGE:
