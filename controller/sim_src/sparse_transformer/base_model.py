@@ -44,9 +44,9 @@ class base_model(STATS_OBJECT):
 
     def _load(self, path):
         if USE_CUDA:
-            return torch.load(path, map_location=torch.device('cuda', torch.cuda.current_device()))
+            return torch.load(path, map_location=torch.device('cuda', torch.cuda.current_device()), weights_only=False)
         else:
-            return torch.load(path, map_location=torch.device('cpu'))
+            return torch.load(path, map_location=torch.device('cpu'),weights_only=False)
     
     def update_nn(self):
         if self.WITH_TARGET:
@@ -66,3 +66,9 @@ class base_model(STATS_OBJECT):
 
     def get_output_np(self, input_np:np.ndarray)->np.ndarray:
         pass
+    
+    def eval(self):
+        if self.model is not None:
+            self.model.eval()
+        if self.model_target is not None:
+            self.model_target.eval()

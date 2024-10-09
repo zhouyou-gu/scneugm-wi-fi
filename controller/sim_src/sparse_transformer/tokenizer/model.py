@@ -3,12 +3,12 @@ import torch.nn as nn
 
 from sim_src.util import *
 
-from sim_src.sparse_transformer.model import base_model
+from sim_src.sparse_transformer.base_model import base_model
 from sim_src.sparse_transformer.tokenizer.nn import node_tokenizer
 
 class tokenizer_base(base_model):
     def __init__(self, LR =0.001):
-        base_model.__init__(self, LR, WITH_TARGET=False)
+        base_model.__init__(self, LR=LR, WITH_TARGET=False)
 
     def init_model(self):
         self.model = node_tokenizer()
@@ -46,3 +46,12 @@ class tokenizer_base(base_model):
         reconstructed = self.model.decode(latent_vectors, train_lengths)
 
         return to_numpy(latent_vectors[0]), to_numpy(reconstructed[0])
+
+    def get_output_np_batch(self, input_np_list)->np.ndarray:
+        padded_train_sequences, train_lengths = pad_tensor_sequence([to_tensor(d) for d in input_np_list])
+
+        latent_vectors = self.model.encode(padded_train_sequences, train_lengths)
+        reconstructed = self.model.decode(latent_vectors, train_lengths)
+
+        return to_numpy(latent_vectors), to_numpy(reconstructed)
+    

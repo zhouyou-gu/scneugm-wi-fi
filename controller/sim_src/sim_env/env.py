@@ -153,6 +153,13 @@ class WiFiNet(InterferenceHelper):
         np.fill_diagonal(ret,0)
         return ret
     
+    def get_CH_matrix(self):
+        C = self.get_contending_node_matrix()
+        H = self.get_hidden_node_matrix()
+        ret = np.logical_or(C.astype(bool) , H.astype(bool)).astype(float)
+        np.fill_diagonal(ret,0)
+        return ret
+    
     def get_loss_sta_ap_threhold(self):
         #TODO: change it according to the rx sensitivity
         return self.STA_AP_LOSS_THREHOLD
