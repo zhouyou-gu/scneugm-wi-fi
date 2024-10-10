@@ -43,6 +43,11 @@ class sparser_base(base_model):
         hard_code = self.model.hard_code(points)
         return to_numpy(hard_code)
     
+    @staticmethod
+    def binarize_hard_code(np_hard_code):
+        ret = (np_hard_code + 1)/2
+        return ret.astype(np.int8)
+    
     def predict_collision_matrix(self, hard_code_np):
         pass
     
