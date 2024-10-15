@@ -11,8 +11,12 @@ class WiFiNet(InterferenceHelper):
     this class implements an ap-sta network to setup wi-fi network simulation.
     
     """
-    STA_AP_LOSS_THREHOLD = 100
-    def __init__(self, cell_edge = 20., cell_size = 5, sta_density_per_1m2 = 10e-3, fre_Hz = 5.8e9, txp_dbm_hi = 5., min_s_n_ratio = 0.1, packet_bit = 800, bandwidth = 20e6, max_err = 1e-5, seed=1):
+    HIDDEN_LOSS = 200.
+    #The energy (dBm) of a received signal should be higher than this threshold to allow the PHY layer to detect the signal.
+    RxSensitivity = -95
+    #Preamble is successfully detection if the SNR is at or above this value (expressed in dB).
+    PreambleDetectionThreshold = 0.
+    def __init__(self, cell_edge = 20., cell_size = 5, sta_density_per_1m2 = 10e-3, fre_Hz = 5.8e9, txp_dbm_hi = 5., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
         """
         Initializes the simulation environment with the given parameters.
 
@@ -60,9 +64,8 @@ class WiFiNet(InterferenceHelper):
 
         self.fre_Hz = fre_Hz
         self.txp_dbm_hi = txp_dbm_hi
-        self.min_s_n_ratio = min_s_n_ratio
         self.packet_bit = packet_bit
-        self.bandwidth = bandwidth
+        self.bandwidth_hz = bandwidth_hz
         self.max_err = max_err
 
         self.ap_locs = None
@@ -161,18 +164,11 @@ class WiFiNet(InterferenceHelper):
         return ret
     
     def get_loss_sta_ap_threhold(self):
-        #TODO: change it according to the rx sensitivity
-        return self.STA_AP_LOSS_THREHOLD
+        return self.txp_dbm_hi-self.RxSensitivity
     
     def get_loss_sta_sta_threhold(self):
-        #TODO: change it according to the rx sensitivity
-        return self.STA_AP_LOSS_THREHOLD
+        return self.txp_dbm_hi-self.RxSensitivity
     
-    def convert_loss_sta_ap_threshold(self, loss):
-        ret = np.copy(loss)
-        ret[ret>self.get_loss_sta_ap_threhold()] = self.HIDDEN_LOSS
-        return ret
-
     def _config_ap_locs(self):
         x=np.linspace(0 + self.ap_offset, self.grid_edge - self.ap_offset, self.cell_size)
         y=np.linspace(0 + self.ap_offset, self.grid_edge - self.ap_offset, self.cell_size)
@@ -191,7 +187,6 @@ class WiFiNet(InterferenceHelper):
         return dd/np.linalg.norm(dd)
 
     def rand_user_mobility(self, mobility_in_meter_s = 0., t_us = 0, resolution_us = 1.):
-
         if mobility_in_meter_s == 0. or t_us == 0.:
             return
         n_step = math.ceil(t_us/resolution_us)
@@ -205,16 +200,23 @@ class WiFiNet(InterferenceHelper):
                 else:
                     self.sta_dirs[i] = self._get_random_dir()
 
-    def check_cell_edge_snr(self):
-        l = InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,self.cell_edge/2*math.sqrt(2))
-        s_db = self.txp_dbm_hi - l - self.bandwidth_txpr_to_noise_dBm(self.bandwidth)
+    
+    def check_snr_at_dis(self,dis):
+        l = InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,dis)
+        s_db = self.txp_dbm_hi - l - self.bandwidth_hz_to_noise_dbm(self.bandwidth_hz)
         s_dec = InterferenceHelper.db_to_dec(s_db)
-        print("snr_db", s_db, "snr_dec", s_dec)
+        print("snr_db", s_db, "snr_dec", s_dec, "distance", dis, "loss", l )
+        return
+
+    def check_cell_edge_snr(self):
+        self.check_snr_at_dis(self.cell_edge/2*math.sqrt(2))
         return
     
-    def check_max_detectable_range(self):
-        min_snr_db = InterferenceHelper.dec_to_db(self.min_s_n_ratio)
-        l = self.txp_dbm_hi - min_snr_db - self.bandwidth_txpr_to_noise_dBm(self.bandwidth)
+    def check_detection_range(self):
+        if self.RxSensitivity - self.bandwidth_hz_to_noise_dbm(self.bandwidth_hz) < self.PreambleDetectionThreshold:
+            print(f"RxSensitivity {self.RxSensitivity} is too low to detect Preamble, snr {self.RxSensitivity - self.bandwidth_hz_to_noise_dbm(self.bandwidth_hz)}, snr_threshold{self.PreambleDetectionThreshold}" )
+            return
+        l = self.txp_dbm_hi - self.RxSensitivity
         tol = 0.001
         a = 0.01
         b = self.cell_edge*self.cell_size
@@ -227,14 +229,17 @@ class WiFiNet(InterferenceHelper):
             else:
                 a = midpoint
 
-        print("maximum detectable range", (a + b) / 2)
-        return 
-
+        print("maximum detectable range", (a + b) / 2, "tx power", self.txp_dbm_hi, "RxSensitivity",self.RxSensitivity)
+        return
 
 if __name__ == "__main__":
     test_obj = WiFiNet()
     test_obj.check_cell_edge_snr()   
-    test_obj.check_max_detectable_range()
+    # test_obj.check_detection_range()
+    # test_obj.check_snr_at_dis(10)   
+    # test_obj.check_snr_at_dis(100)   
+
+    exit(0)
     print(test_obj.get_sta_states()[0:5])
     for k in test_obj.get_sta_states():
         print(k.__len__())
