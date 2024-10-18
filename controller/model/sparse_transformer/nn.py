@@ -74,6 +74,7 @@ class attention_layer_KQMV(nn.Module):
         return out
 
 class network_performance_transformer(nn.Module):
+    
     def __init__(self, token_dim=10, head_dim=5, num_heads=5, ot_dim=1, num_layers=3):
         nn.Module.__init__(self)
         self.attention_layers = nn.ModuleList([

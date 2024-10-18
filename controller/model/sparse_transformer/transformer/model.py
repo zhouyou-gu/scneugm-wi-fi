@@ -7,8 +7,8 @@ from torch import optim, nn
 from torch_geometric.data import Data
 from torch_geometric.utils import from_networkx, to_dense_adj
 
-from sim_src.sparse_transformer.base_model import base_model
-from sim_src.sparse_transformer.nn import node_tokenizer, network_performance_transformer
+from model.base_model import base_model
+from model.sparse_transformer.nn import node_tokenizer, network_performance_transformer
 from sim_src.util import USE_CUDA, hard_update_inplace, counted, STATS_OBJECT, soft_update_inplace, to_numpy, to_tensor, \
     to_device, p_true
 

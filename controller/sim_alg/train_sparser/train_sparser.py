@@ -1,7 +1,7 @@
 import numpy as np
 from working_dir_path import get_controller_path
-from sim_src.sparse_transformer.sparser.model import sparser_base
-from sim_src.sparse_transformer.tokenizer.model import tokenizer_base
+from model.sparse_transformer.sparser.model import sparser_base
+from model.sparse_transformer.tokenizer.model import tokenizer_base
 from sim_src.sim_env.env import WiFiNet
 
 from sim_src.util import *

@@ -7,30 +7,34 @@ from ns3gym import ns3env
 from sim_src.ns3_ctrl.ns3_ctrl import run_ns3, ns3_env
 from sim_src.util import STATS_OBJECT
 
+import traceback
 
 class wifi_net_config:
+    PROG_PATH = ""
+    PROG_NAME = ""
     def __init__(self):
-        self.PROG_PATH = ""
-        self.PROG_NAME = ""
-        self.PROG_PORT = 5000
-        self.PROG_SEED = 0
-        self.PROG_TIME = 10
-
         self.id = 0
-        self.n_ap = 0
-        self.n_sta = 0
+            
+        self.CMD_CONFIGS = {}
+        self.CMD_CONFIGS["verbose"] = 0 # 0/1 for verbose enabled or disabled
+        self.CMD_CONFIGS["MaxNumRetx"] = 5 # default, change here
+        self.CMD_CONFIGS["phyMode"] = "OfdmRate6Mbps" # default, do not change
+        self.CMD_CONFIGS["packetSize"] = 100 # updated in env
+        self.CMD_CONFIGS["numPackets"] = 100 # updated in env
+        self.CMD_CONFIGS["interval_in_us"] = 0  # not used 
+        self.CMD_CONFIGS["n_ap"] = 0 # updated in env
+        self.CMD_CONFIGS["n_sta"] = 0 # updated in env
+        self.CMD_CONFIGS["openGymPort"] = 0 # automatically assigning a port number if 0
+        self.CMD_CONFIGS["simSeed"] = 0 # updated in sim_sys
+        self.CMD_CONFIGS["simTime"] = 0. # not used
+        self.CMD_CONFIGS["TxPower"] = 5. # updated in env
+        self.CMD_CONFIGS["RxNoiseFigure"] = 5. # updated in env
+        self.CMD_CONFIGS["CcaEdThreshold"] = -95. # updated in env
+        self.CMD_CONFIGS["RxSensitivity"] = -95. # updated in env
+        self.CMD_CONFIGS["PreambleDetectionThresholdMinimumRssi"] = -95. # updated in env
 
-        self.app_packet_interval = 40000
-        self.app_packet_size = 20
-
-        self.loss_ap_ap = None
-        self.loss_sta_ap = None
-        self.loss_sta_sta = None
-
-        self.twtstarttime = None
-        self.twtoffset = None
-        self.twtduration = None
-        self.twtperiodicity = None
+        self.state = {}
+        self.action = {}
 
 
 class wifi_net_instance(STATS_OBJECT):
@@ -61,7 +65,7 @@ class sim_wifi_net(wifi_net_instance, ns3_env, Thread):
 
     def run(self):
         self._print("ns3 gym dt agent",self.id,"starts")
-        self.agnt = ns3env.Ns3Env(port=self.cfg.PROG_PORT, startSim=False)
+        self.agnt = ns3env.Ns3Env(port=self.cfg.CMD_CONFIGS["openGymPort"], startSim=False)
         self._print("ns3 sim",self.id,"starts")
         self.proc = self._run_ns3_proc()
         self.agnt.init()
@@ -71,6 +75,7 @@ class sim_wifi_net(wifi_net_instance, ns3_env, Thread):
             self._ret_ns3gym_obs(obs)
         except Exception as e:
             print("sim_wifi_net run Error", str(e))
+            traceback.print_exc()
         finally:
             self.agnt.close()
         self._print("ns3 gym dt agent",self.id,"is done")
@@ -78,14 +83,16 @@ class sim_wifi_net(wifi_net_instance, ns3_env, Thread):
 
     def _gen_ns3gym_act(self):
         act = {}
-        act['loss_ap_ap'] = self.cfg.loss_ap_ap.flatten().tolist()
-        act['loss_sta_ap'] = self.cfg.loss_sta_ap.flatten().tolist()
-        act['loss_sta_sta'] = self.cfg.loss_sta_sta.flatten().tolist()
-        act['twtstarttime'] = self.cfg.twtstarttime.flatten().tolist()
-        act['twtoffset'] = self.cfg.twtoffset.flatten().tolist()
-        act['twtduration'] = self.cfg.twtduration.flatten().tolist()
-        act['twtperiodicity'] = self.cfg.twtperiodicity.flatten().tolist()
-        # print(act)
+        #fill the path loss configuration
+        act['loss_ap_ap'] = self.cfg.state['loss_ap_ap'].flatten().tolist()
+        act['loss_sta_ap'] =  self.cfg.state['loss_sta_ap'].flatten().tolist()
+        act['loss_sta_sta'] =  self.cfg.state['loss_sta_sta'].flatten().tolist()
+        
+        #fill the twt configuration
+        act['twtstarttime'] =  self.cfg.action['twtstarttime'].flatten().tolist()
+        act['twtoffset'] =  self.cfg.action['twtoffset'].flatten().tolist()
+        act['twtduration'] =  self.cfg.action['twtduration'].flatten().tolist()
+        act['twtperiodicity'] =  self.cfg.action['twtperiodicity'].flatten().tolist()
         return act
 
     def _ret_ns3gym_obs(self, obs):
@@ -94,21 +101,12 @@ class sim_wifi_net(wifi_net_instance, ns3_env, Thread):
         for k in obs.keys():
             self.ret[k] = np.array(obs[k][:])
 
-    def _get_ns3_args(self):
-        args = {}
-        args['n_ap'] = self.cfg.n_ap
-        args['n_sta'] = self.cfg.n_sta
-        args['interval_in_us'] = self.cfg.app_packet_interval
-        args['packetSize'] = self.cfg.app_packet_size
-        return args
-
     def _run_ns3_proc(self) -> subprocess.Popen:
         path = self.cfg.PROG_PATH
         name = self.cfg.PROG_NAME
-        port = self.cfg.PROG_PORT
-        if port == 0:
-            port = self.agnt.get_port()
-        seed = self.cfg.PROG_SEED
-        time = self.cfg.PROG_TIME
-        args = self._get_ns3_args()
-        return run_ns3(path_to_ns3=path, program_name=name, port=port, sim_seed=seed, sim_time=time, sim_args=args, debug=self.DEBUG)
+        if self.cfg.CMD_CONFIGS["openGymPort"] == 0:
+            self.cfg.CMD_CONFIGS["openGymPort"] = self.agnt.get_port()
+        return run_ns3(path_to_ns3=path, program_name=name, sim_args=self.cfg.CMD_CONFIGS, debug=self.DEBUG)
+    
+if __name__ == "__main__":
+    print(str("true"))

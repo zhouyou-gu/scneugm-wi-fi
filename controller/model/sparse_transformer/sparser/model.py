@@ -3,8 +3,8 @@ import torch.nn as nn
 
 from sim_src.util import *
 
-from sim_src.sparse_transformer.base_model import base_model
-from sim_src.sparse_transformer.sparser.nn import hashing_function
+from model.base_model import base_model
+from model.sparse_transformer.sparser.nn import hashing_function
 
 class sparser_base(base_model):
     def __init__(self, LR =0.001):

@@ -9,15 +9,10 @@ class ns3_env():
         pass
 
 
-def run_ns3(path_to_ns3, program_name, port, sim_seed = 1, sim_time = 10, sim_args = {}, debug=False):
-    assert port is not None,  "run_ns3: need a specific port for ns3 program"
-
+def run_ns3(path_to_ns3, program_name, sim_args:dict, debug=False):
     cwd = os.getcwd()
     os.chdir(os.path.expandvars(path_to_ns3))
     ns3_string = "./ns3 run '" + program_name
-    ns3_string += ' --openGymPort=' + str(port)
-    ns3_string += ' --simSeed=' + str(sim_seed)
-    ns3_string += ' --simTime=' + str(sim_time)
 
     for key, value in sim_args.items():
         ns3_string += " --"

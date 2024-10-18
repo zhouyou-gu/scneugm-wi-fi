@@ -1,7 +1,6 @@
 import math
 
 import numpy as np
-import scipy
 
 from sim_src.sim_env.interference_helper import InterferenceHelper
 
@@ -12,6 +11,8 @@ class WiFiNet(InterferenceHelper):
     
     """
     HIDDEN_LOSS = 200.
+    
+    N_PACKETS = 100
     #The energy (dBm) of a received signal should be higher than this threshold to allow the PHY layer to detect the signal.
     RxSensitivity = -95
     #Preamble is successfully detection if the SNR is at or above this value (expressed in dB).
@@ -232,6 +233,26 @@ class WiFiNet(InterferenceHelper):
         print("maximum detectable range", (a + b) / 2, "tx power", self.txp_dbm_hi, "RxSensitivity",self.RxSensitivity)
         return
 
+    def get_config(self):
+        CMD_CONFIGS = {}
+        CMD_CONFIGS["packetSize"] = int(self.packet_bit/8)
+        CMD_CONFIGS["numPackets"] = self.N_PACKETS
+        CMD_CONFIGS["n_ap"] = self.n_ap
+        CMD_CONFIGS["n_sta"] = self.n_sta
+        CMD_CONFIGS["TxPower"] = self.txp_dbm_hi
+        CMD_CONFIGS["RxNoiseFigure"] = self.NOISEFIGURE
+        CMD_CONFIGS["CcaEdThreshold"] = self.RxSensitivity 
+        CMD_CONFIGS["RxSensitivity"] = self.RxSensitivity 
+        CMD_CONFIGS["PreambleDetectionThresholdMinimumRssi"] = self.RxSensitivity 
+        return CMD_CONFIGS
+        
+    def get_state(self):
+        state = {}
+        state["loss_ap_ap"] = self.get_loss_ap_ap()
+        state["loss_sta_ap"] = self.get_loss_sta_ap()
+        state["loss_sta_sta"] = self.get_loss_sta_sta()
+        return state
+
 if __name__ == "__main__":
     test_obj = WiFiNet()
     test_obj.check_cell_edge_snr()   
@@ -239,7 +260,6 @@ if __name__ == "__main__":
     # test_obj.check_snr_at_dis(10)   
     # test_obj.check_snr_at_dis(100)   
 
-    exit(0)
     print(test_obj.get_sta_states()[0:5])
     for k in test_obj.get_sta_states():
         print(k.__len__())
@@ -250,6 +270,7 @@ if __name__ == "__main__":
     print("get_contending_node_matrix",test_obj.get_contending_node_matrix().sum()/test_obj.n_sta)
     print("get_hidden_node_matrix",test_obj.get_hidden_node_matrix().sum()/test_obj.n_sta)
     print("get_interfering_node_matrix",test_obj.get_interfering_node_matrix().sum()/test_obj.n_sta)
+    print("get_CH_matrix",test_obj.get_CH_matrix().sum()/test_obj.n_sta)
     print(np.logical_and(np.logical_not(test_obj.get_interfering_node_matrix().astype(bool)),test_obj.get_contending_node_matrix().astype(bool).astype(int)).sum()/test_obj.n_sta)
     print(np.logical_and(np.logical_not(test_obj.get_contending_node_matrix().astype(bool)),test_obj.get_interfering_node_matrix().astype(bool).astype(int)).sum()/test_obj.n_sta)
     print(test_obj.get_contending_node_matrix().diagonal().sum())
