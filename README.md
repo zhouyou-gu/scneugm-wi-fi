@@ -1,6 +1,8 @@
 # SPARSE-GGM-WI-FI
 
 ### Installation
+Install [Pytorch](https://pytorch.org/get-started/locally/) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html)
+
 Install the dependency of ns3 and ns3gym as
 
 ```bash

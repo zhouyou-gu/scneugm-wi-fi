@@ -1,6 +1,6 @@
 import numpy as np
-from model.sparse_transformer.sparser.nn import hashing_function
-from model.sparse_transformer.tokenizer.model import tokenizer_base
+from sim_mld.sparse_transformer.sparser.nn import hashing_function
+from sim_mld.sparse_transformer.tokenizer.model import tokenizer_base
 from sim_src.sim_env.env import WiFiNet
 
 from sim_src.util import *

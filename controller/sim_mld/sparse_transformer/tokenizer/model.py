@@ -3,8 +3,8 @@ import torch.nn as nn
 
 from sim_src.util import *
 
-from model.base_model import base_model
-from model.sparse_transformer.tokenizer.nn import node_tokenizer
+from sim_mld.base_model import base_model
+from sim_mld.sparse_transformer.tokenizer.nn import node_tokenizer
 
 class tokenizer_base(base_model):
     def __init__(self, LR =0.001):

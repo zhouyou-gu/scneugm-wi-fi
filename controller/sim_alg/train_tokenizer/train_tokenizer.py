@@ -1,5 +1,5 @@
 import numpy as np
-from model.sparse_transformer.tokenizer.model import tokenizer_base
+from sim_mld.sparse_transformer.tokenizer.model import tokenizer_base
 from sim_src.sim_env.env import WiFiNet
 
 from sim_src.util import *
@@ -8,7 +8,7 @@ np.set_printoptions(precision=3)
 
 model = tokenizer_base()
 
-N_TRAINING_STEP = 1000
+N_TRAINING_STEP = 10000
 for i in range(N_TRAINING_STEP):
     e = WiFiNet(seed=i)
     b = e.get_sta_states()

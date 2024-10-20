@@ -27,7 +27,7 @@ def to_numpy(var):
     return var.cpu().data.numpy() if USE_CUDA else var.data.numpy()
 
 def to_tensor(ndarray, requires_grad=False, dtype=FLOAT):
-    t = torch.from_numpy(ndarray)
+    t = torch.from_numpy(np.array(ndarray))
     t.requires_grad_(requires_grad)
     if USE_CUDA:
         return t.type(dtype).to(torch.cuda.current_device())

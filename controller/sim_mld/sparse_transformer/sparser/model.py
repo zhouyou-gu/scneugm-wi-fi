@@ -3,8 +3,8 @@ import torch.nn as nn
 
 from sim_src.util import *
 
-from model.base_model import base_model
-from model.sparse_transformer.sparser.nn import hashing_function
+from sim_mld.base_model import base_model
+from sim_mld.sparse_transformer.sparser.nn import hashing_function
 
 class sparser_base(base_model):
     def __init__(self, LR =0.001):
@@ -15,14 +15,18 @@ class sparser_base(base_model):
 
     @counted
     def step(self, batch):
-        # batch is a tuple of vectors-np and a target_collision_matrix
+        '''
+        batch contains:
+            token (K,token_dim): K row vectors representing tokens of each STA 
+            target_collision_matrix (K,K): the target collision matrix
+        '''
         if not batch:
             print("None batch in step", self.N_STEP)
             return
         
-        points = to_tensor(batch[0])
+        points = to_tensor(batch['token'])
 
-        target_collision_matrix = to_tensor(batch[1])
+        target_collision_matrix = to_tensor(batch['target_collision_matrix'])
         
         soft_code = self.model(points)
 
@@ -47,8 +51,5 @@ class sparser_base(base_model):
     def binarize_hard_code(np_hard_code):
         ret = (np_hard_code + 1)/2
         return ret.astype(np.int8)
-    
-    def predict_collision_matrix(self, hard_code_np):
-        pass
     
     
