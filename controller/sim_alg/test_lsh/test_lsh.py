@@ -52,7 +52,7 @@ for i in range(N_TRAINING_STEP):
     res = lsh.compare_adjacency_matrices(approx_collision_matrix,target_collision_matrix)
     print(e.n_sta**2,res)
 
-
+    # use interference matrix to compare the target collision matrix
     I = e.get_interfering_node_matrix()
     I = csr_matrix(I).astype(np.int8)
     I.eliminate_zeros()

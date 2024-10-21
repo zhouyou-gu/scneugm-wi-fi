@@ -38,7 +38,8 @@ class tokenizer_base(base_model):
 
         self._printalltime(f"loss: {loss.item():.4f}")
         self._add_np_log("loss",self.N_STEP,loss.item())
-        
+  
+    @torch.no_grad()      
     def get_output_np(self, input_np:np.ndarray)->np.ndarray:
         padded_train_sequences, train_lengths = pad_tensor_sequence([to_tensor(input_np)])
 
@@ -47,6 +48,7 @@ class tokenizer_base(base_model):
 
         return to_numpy(latent_vectors[0]), to_numpy(reconstructed[0])
 
+    @torch.no_grad()
     def get_output_np_batch(self, input_np_list)->np.ndarray:
         padded_train_sequences, train_lengths = pad_tensor_sequence([to_tensor(d) for d in input_np_list])
 

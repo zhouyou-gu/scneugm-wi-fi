@@ -1,10 +1,38 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-    
-from torch_geometric.nn import TransformerConv
-from torch_geometric.data import Data, Batch
 
+from torch_geometric.nn.conv.transformer_conv import *
+class SigmoidTransformerConv(TransformerConv):
+    def __init__(self, in_channels, out_channels, heads=1, **kwargs):
+        super(SigmoidTransformerConv, self).__init__(in_channels, out_channels, heads, **kwargs)
+
+    def message(self, query_i: Tensor, key_j: Tensor, value_j: Tensor,
+                edge_attr: OptTensor, index: Tensor, ptr: OptTensor,
+                size_i: Optional[int]) -> Tensor:
+
+        if self.lin_edge is not None:
+            assert edge_attr is not None
+            edge_attr = self.lin_edge(edge_attr).view(-1, self.heads,
+                                                    self.out_channels)
+            key_j = key_j + edge_attr
+
+        # Compute attention scores without softmax
+        alpha = (query_i * key_j).sum(dim=-1) / math.sqrt(self.out_channels)
+
+        # Apply sigmoid to ensure alpha is between 0 and 1
+        alpha = torch.sigmoid(alpha)
+        self._alpha = alpha
+        alpha = F.dropout(alpha, p=self.dropout, training=self.training)
+
+        out = value_j
+        if edge_attr is not None:
+            out = out + edge_attr
+
+        out = out * alpha.view(-1, self.heads, 1)
+        return out
+    
 class GraphTransformer(nn.Module):
     def __init__(self, input_dim=5, hidden_dim=5, heads=5, num_layers=3):
         super(GraphTransformer, self).__init__()
@@ -15,7 +43,7 @@ class GraphTransformer(nn.Module):
         for _ in range(num_layers):
             self.convs.append(TransformerConv(hidden_dim*heads, hidden_dim, heads=heads))
         self.o_lin = nn.Sequential(
-                nn.Linear(hidden_dim, 1),
+                nn.Linear(hidden_dim*heads, 1),
                 nn.Sigmoid()
         )
     def forward(self, x, edge_index):
@@ -25,22 +53,3 @@ class GraphTransformer(nn.Module):
         x = self.o_lin(x)
 
         return x
-
-    def process_pairs(self, node_features_list, index_pairs):
-        graphs = []
-
-        # Create individual graph data for each specified pair
-        for i, (idx1, idx2) in enumerate(index_pairs):
-            # Extract node features for the given index pair
-            x_pair = torch.stack([node_features_list[idx1], node_features_list[idx2]])  # Shape: [2, input_dim]
-            edge_index_pair = torch.tensor([[0, 1], [1, 0]], dtype=torch.long)  # Bidirectional edge between nodes 0 and 1
-            graphs.append(Data(x=x_pair, edge_index=edge_index_pair))
-
-        # Batch all pair-wise graphs
-        batch = Batch.from_data_list(graphs)
-
-        # Forward pass through the transformer
-        x = self.forward(batch.x, batch.edge_index)
-
-        # Reshape the output for each pair
-        return x.view(len(index_pairs), 2, -1)

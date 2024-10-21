@@ -38,10 +38,11 @@ class sparser_base(base_model):
         self.model_optim.step()
         self.model_optim.zero_grad()
         
-        self._printalltime(f"step:{self.N_STEP:4d}, loss_tot:{loss_tot:.4f} ,loss_dis:{loss_dis:.4f}, loss_cor:{loss_cor:.4f}, loss_bal:{loss_bal:.4f}")
+        self._printalltime(f"loss_tot:{loss_tot:.4f}, loss_dis:{loss_dis:.4f}, loss_cor:{loss_cor:.4f}, loss_bal:{loss_bal:.4f}")
         loss_np = np.array([loss_tot.item(),loss_dis.item(),loss_cor.item(),loss_bal.item()])
         self._add_np_log("loss",self.N_STEP,loss_np)
         
+    @torch.no_grad()
     def get_output_np(self, input_np:np.ndarray)->np.ndarray:
         points = to_tensor(input_np)
         hard_code = self.model.hard_code(points)

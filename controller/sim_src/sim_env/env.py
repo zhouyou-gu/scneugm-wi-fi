@@ -11,13 +11,14 @@ class WiFiNet(InterferenceHelper):
     
     """
     HIDDEN_LOSS = 200.
-    
-    N_PACKETS = 100
+    TARGET_PACKET_LOSS = 1e-2
+
+    N_PACKETS = 200
     #The energy (dBm) of a received signal should be higher than this threshold to allow the PHY layer to detect the signal.
     RxSensitivity = -95
     #Preamble is successfully detection if the SNR is at or above this value (expressed in dB).
     PreambleDetectionThreshold = 0.
-    def __init__(self, cell_edge = 20., cell_size = 5, sta_density_per_1m2 = 10e-3, fre_Hz = 5.8e9, txp_dbm_hi = 5., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
+    def __init__(self, cell_edge = 20., cell_size = 5, sta_density_per_1m2 = 2e-3, fre_Hz = 5.8e9, txp_dbm_hi = 5., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
         """
         Initializes the simulation environment with the given parameters.
 
@@ -252,6 +253,19 @@ class WiFiNet(InterferenceHelper):
         state["loss_sta_ap"] = self.get_loss_sta_ap()
         state["loss_sta_sta"] = self.get_loss_sta_sta()
         return state
+    
+    @staticmethod
+    def evaluate_qos(ret):
+        packet_loss_rate = 1. - ret/WiFiNet.N_PACKETS
+        qos_fail = (packet_loss_rate >= WiFiNet.TARGET_PACKET_LOSS)
+        print(ret[:5])
+        print(packet_loss_rate[:5])
+        print(qos_fail[:5])
+        return qos_fail
+        
+        
+        
+
 
 if __name__ == "__main__":
     test_obj = WiFiNet()

@@ -1,3 +1,4 @@
+import csv
 import math
 import os
 from datetime import datetime
@@ -21,7 +22,9 @@ def RatioToDb(a):
 CUDA_AVAILABLE = torch.cuda.is_available()
 USE_CUDA = CUDA_AVAILABLE
 FLOAT = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
-LONG_TYPE = torch.cuda.LongTensor if USE_CUDA else torch.LongTensor
+LONG_FLOAT = torch.cuda.LongTensor if USE_CUDA else torch.LongTensor
+INTEGER = torch.cuda.IntTensor if USE_CUDA else torch.IntTensor
+LONG_INTEGER = torch.cuda.LongTensor if USE_CUDA else torch.LongTensor
 
 def to_numpy(var):
     return var.cpu().data.numpy() if USE_CUDA else var.data.numpy()
@@ -264,3 +267,30 @@ def GET_LOG_PATH_FOR_SIM_SCRIPT(sim_script_path):
 def GET_FILE_NAME_FOR_SIM_SCRIPT(file):
     FILE_NAME = os.path.splitext(os.path.basename(file))[0]
     return FILE_NAME
+
+
+def print_histogram_counts_one_line(arr, bins='auto', range=None):
+    """
+    Prints the counts of numbers in each bin (like a histogram), in one line.
+    Automatically adjusts the number of bins based on the data.
+    
+    Parameters:
+    arr (array-like): Input array of any shape (scalar, vector, or multidimensional matrix).
+    bins (int, str, or sequence): Number of histogram bins, bin edges, or binning strategy.
+                                  Default is 'auto' for automatic binning.
+    range (tuple): Lower and upper range of the bins (optional).
+    """
+    arr = np.asarray(arr).flatten()
+    
+    # Handle the case where the array has no elements
+    if arr.size == 0:
+        print("The array is empty. No histogram to display.")
+        return
+    
+    # Compute histogram data with automatic binning
+    hist, bin_edges = np.histogram(arr, bins=bins, range=range)
+    
+    # Format counts per bin in one line, including bin ranges
+    counts_str = ', '.join(f"[{bin_edges[i]:.2f}, {bin_edges[i+1]:.2f}): {count}" 
+                           for i, count in enumerate(hist))
+    print(f"Histogram Counts: {counts_str}")
