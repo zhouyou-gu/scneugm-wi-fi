@@ -7,7 +7,7 @@ class sim_sys(STATS_OBJECT):
         self.id = id
         self.ns3_env = None
     @counted
-    def step(self, env, agt, run_ns3 = True, seed = None)->dict:
+    def step(self, env, agt, run_ns3 = True, seed = None, sync=False)->dict:
         cfg = wifi_net_config()
         #seed is updated using sim_sys
         if seed:
@@ -32,13 +32,18 @@ class sim_sys(STATS_OBJECT):
 
         if run_ns3:
             self.ns3_env.start()
+            if sync:
+                self.ns3_env.join()
+                return self.process_ns3_return(self.ns3_env.get_return())
+                
+        return None
             
     def wait_ns3_end(self):
         self.ns3_env.join()
         return self.process_ns3_return(self.ns3_env.get_return())
     
     def is_ns3_end(self):
-        return self.ns3_env.is_alive()
+        return not self.ns3_env.is_alive()
     
     def process_ns3_return(self,ret):
         return ret['pkc']

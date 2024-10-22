@@ -1,1 +1,0 @@
-user_mobility = 0.

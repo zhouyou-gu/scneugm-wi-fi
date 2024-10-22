@@ -13,12 +13,12 @@ class WiFiNet(InterferenceHelper):
     HIDDEN_LOSS = 200.
     TARGET_PACKET_LOSS = 1e-2
 
-    N_PACKETS = 200
+    N_PACKETS = 100
     #The energy (dBm) of a received signal should be higher than this threshold to allow the PHY layer to detect the signal.
     RxSensitivity = -95
     #Preamble is successfully detection if the SNR is at or above this value (expressed in dB).
     PreambleDetectionThreshold = 0.
-    def __init__(self, cell_edge = 20., cell_size = 5, sta_density_per_1m2 = 2e-3, fre_Hz = 5.8e9, txp_dbm_hi = 5., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
+    def __init__(self, cell_edge = 20., cell_size = 5, n_sta = 100, fre_Hz = 5.8e9, txp_dbm_hi = 5., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
         """
         Initializes the simulation environment with the given parameters.
 
@@ -28,16 +28,12 @@ class WiFiNet(InterferenceHelper):
             The edge length of a single cell in meters.
         cell_size : int
             The number of cells along one dimension of the grid.
-        sta_density_per_1m2 : float
-            The density of stations (STAs) per square meter.
+        n_sta : float
+            The number of STAs.
         fre_Hz : float
             The frequency of the signal in Hertz.
         txp_dbm_hi : float
             The transmission power of the access points (APs) in dBm.
-        txp_offset : float
-            The offset to be applied to the transmission power.
-        min_s_n_ratio : float
-            The minimum signal-to-noise ratio required.
         packet_bit : int
             The size of each packet in bits.
         bandwidth : float
@@ -60,9 +56,7 @@ class WiFiNet(InterferenceHelper):
         self.n_ap = int(self.cell_size ** 2)
         self.ap_offset = self.cell_edge / 2.
 
-        self.sta_density_per_1m2 = sta_density_per_1m2
-        self.sta_density_per_grid = self.sta_density_per_1m2 * self.cell_edge ** 2
-        self.n_sta = int(self.cell_size**2 * self.sta_density_per_grid)
+        self.n_sta = int(n_sta)
 
         self.fre_Hz = fre_Hz
         self.txp_dbm_hi = txp_dbm_hi
@@ -256,14 +250,14 @@ class WiFiNet(InterferenceHelper):
     
     @staticmethod
     def evaluate_qos(ret):
-        packet_loss_rate = 1. - ret/WiFiNet.N_PACKETS
+        packet_loss_rate = WiFiNet.evaluate_bler(ret)
         qos_fail = (packet_loss_rate >= WiFiNet.TARGET_PACKET_LOSS)
-        print(ret[:5])
-        print(packet_loss_rate[:5])
-        print(qos_fail[:5])
         return qos_fail
         
-        
+    @staticmethod
+    def evaluate_bler(ret):
+        packet_loss_rate = 1. - ret/WiFiNet.N_PACKETS
+        return packet_loss_rate
         
 
 
