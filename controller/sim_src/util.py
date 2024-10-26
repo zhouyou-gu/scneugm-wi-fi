@@ -10,6 +10,15 @@ import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
+class GlobalSeedGen():
+    SEED = 0
+    def __init__(self):
+        GlobalSeedGen.SEED +=1 
+
+def GetSeed():
+    GlobalSeedGen()
+    return GlobalSeedGen.SEED
+    
 def p_true(probability_of_true):
     return np.random.choice([True, False], p=[probability_of_true, 1 - probability_of_true])
 
@@ -46,6 +55,68 @@ def pad_tensor_sequence(list_of_tensor_sequence, batch_first = True):
     train_lengths = [seq.size(0) for seq in list_of_tensor_sequence]
     padded_train_sequences = pad_sequence(list_of_tensor_sequence, batch_first=batch_first)
     return to_device(padded_train_sequences), train_lengths
+
+def pad_numpy_sequence(list_of_sequences, padding_value=0, batch_first=True):
+    """
+    Pads a list of sequences (list of list of np.ndarray) with a specified padding value.
+
+    Args:
+        list_of_sequences (List[List[np.ndarray]]): 
+            A list where each element is a sequence (list) of NumPy array vectors.
+        padding_value (float or int, optional): 
+            The value used for padding shorter sequences. Defaults to 0.
+        batch_first (bool, optional): 
+            If True, the output array shape will be (batch_size, max_seq_len, vector_dim).
+            If False, the shape will be (max_seq_len, batch_size, vector_dim). Defaults to True.
+
+    Returns:
+        padded_sequences (np.ndarray): 
+            A NumPy array containing all sequences padded to the same length.
+        sequence_lengths (List[int]): 
+            A list containing the original lengths of each sequence before padding.
+    """
+    # Calculate the length of each sequence
+    sequence_lengths = [len(seq) for seq in list_of_sequences]
+    
+    # Determine the maximum sequence length
+    max_seq_len = max(sequence_lengths)
+    
+    if max_seq_len == 0:
+        raise ValueError("All sequences are empty. Cannot perform padding.")
+    
+    # Assume all vectors have the same shape
+    # Retrieve the shape of a single vector from the first non-empty sequence
+    for seq in list_of_sequences:
+        if len(seq) > 0:
+            vector_shape = seq[0].shape
+            break
+    else:
+        raise ValueError("All sequences are empty. Cannot determine vector shape.")
+    
+    # Determine the shape of the padded array
+    if batch_first:
+        padded_shape = (len(list_of_sequences), max_seq_len) + vector_shape
+    else:
+        padded_shape = (max_seq_len, len(list_of_sequences)) + vector_shape
+    
+    # Initialize the padded array with the padding_value
+    padded_sequences = np.full(padded_shape, padding_value, dtype=list_of_sequences[0][0].dtype)
+    
+    # Iterate over each sequence and pad accordingly
+    for i, seq in enumerate(list_of_sequences):
+        if len(seq) == 0:
+            continue  # Skip empty sequences
+        
+        # Stack the vectors in the current sequence into a NumPy array
+        stacked_seq = np.stack(seq)
+        
+        if batch_first:
+            padded_sequences[i, :sequence_lengths[i]] = stacked_seq
+        else:
+            padded_sequences[:sequence_lengths[i], i] = stacked_seq
+    
+    return padded_sequences, sequence_lengths
+
 
 def cat_str_dot_txt(sl):
     ret = ""

@@ -1,5 +1,5 @@
 import numpy as np
-from sim_mld.sparse_transformer.tokenizer.model import tokenizer_base
+from sim_mld.tokenizer.model import tokenizer_base
 from sim_src.sim_env.env import WiFiNet
 
 from sim_src.util import *

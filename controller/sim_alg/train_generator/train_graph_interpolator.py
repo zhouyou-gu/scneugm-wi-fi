@@ -45,6 +45,23 @@ coe_model = graph_interpolator()
 N_TRAINING_STEP = 10000
 n_sta = 50
 WiFiNet.N_PACKETS = 1
+
+def binary_search(arr, target):
+    low = 0
+    high = len(arr) - 1
+    
+    while low <= high:
+        mid = (low + high) // 2
+        
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+    
+    return -1  # Target not found
+
 for i in range(N_TRAINING_STEP):
     env = WiFiNet(seed=i,n_sta=n_sta)
     agt = agt_for_training()
@@ -57,19 +74,34 @@ for i in range(N_TRAINING_STEP):
     w_CnH, edge_index_CnH = CnH_generator_model.get_output_np_edge_weight(token)
     w_VoQ, edge_index_VoQ = VoQ_generator_model.get_output_np_edge_weight(token)
     
-    alpha, beta = coe_model.get_interpolation_coefficient()
-    adj = coe_model.interpolate_sparse_graphs(w_VoQ,edge_index_VoQ,w_CnH,edge_index_CnH,alpha,beta,num_nodes=n_sta)
-    
-    act = sim_agt_base.greedy_coloring(adj)
-    n_slot = np.max(act)+1
-    agt.set_action(act)
-    
-    ns3sys = sim_sys()
-    ret = ns3sys.step(env=env,agt=agt,seed=i,sync=True)
+    beta_list = np.linspace(0, 1, 100)
 
-    bler = WiFiNet.evaluate_bler(ret)
-    p_qosf = np.sum(bler)/n_sta
-    
+    left, right = 0, len(beta_list) - 1
+    alpha, _ = coe_model.get_interpolation_coefficient()
+    while left <= right:
+        mid = left + (right - left) // 2
+        beta = beta_list[mid]
+
+        # alpha = 1.
+        adj = coe_model.interpolate_sparse_graphs(w_VoQ,edge_index_VoQ,w_CnH,edge_index_CnH,alpha,beta,num_nodes=n_sta)
+        
+        act = sim_agt_base.greedy_coloring(adj)
+        n_slot = np.max(act)+1
+        agt.set_action(act)
+        
+        ns3sys = sim_sys()
+        ret = ns3sys.step(env=env,agt=agt,seed=i,sync=True)
+
+        bler = WiFiNet.evaluate_bler(ret)
+        p_qosf = np.sum(bler)/n_sta
+
+        if p_qosf == 0:
+            left = mid + 1
+        else:
+            right = mid - 1
+    act = sim_agt_base.greedy_coloring(csr_matrix(env.get_CH_matrix()))
+
+    print(f"ggm:{n_slot}, chg:{np.max(act)+1}")
     batch = {}
     batch['n_slot'] = n_slot
     batch['p_qosf'] = p_qosf

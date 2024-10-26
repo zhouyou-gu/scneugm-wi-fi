@@ -18,7 +18,7 @@ class WiFiNet(InterferenceHelper):
     RxSensitivity = -95
     #Preamble is successfully detection if the SNR is at or above this value (expressed in dB).
     PreambleDetectionThreshold = 0.
-    def __init__(self, cell_edge = 20., cell_size = 5, n_sta = 100, fre_Hz = 5.8e9, txp_dbm_hi = 5., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
+    def __init__(self, cell_edge = 10., cell_size = 10, n_sta = 100, fre_Hz = 5.8e9, txp_dbm_hi = 0., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
         """
         Initializes the simulation environment with the given parameters.
 
@@ -43,7 +43,7 @@ class WiFiNet(InterferenceHelper):
         seed : int
             Seed for random number generation.
         """
-        
+        self.seed = seed
         self.rand_gen_loc = np.random.default_rng(seed)
         self.rand_gen_fad = np.random.default_rng(seed)
         self.rand_gen_mob = np.random.default_rng(seed)
@@ -119,14 +119,14 @@ class WiFiNet(InterferenceHelper):
                     t = [self.ap_locs[a][0],self.ap_locs[a][1],self._get_loss_between_locs(self.sta_locs[k],self.ap_locs[a])]
                     t = self._normalize_sta_tuple(t)
                     tmp_list.append(t)
-            sorted(tmp_list, key=lambda x: x[-1])
+            tmp_list = sorted(tmp_list, key=lambda x: x[-1])
             state_list.append(np.asarray(tmp_list))
         return state_list
     
     def _normalize_sta_tuple(self,t):
         t[0] = (t[0] - self.grid_edge/2.)/self.grid_edge
         t[1] = (t[1] - self.grid_edge/2.)/self.grid_edge
-        t[2] = (t[2] - self.get_loss_sta_ap_threhold())/self.get_loss_sta_ap_threhold()
+        t[2] = -(t[2] - self.get_loss_sta_ap_threhold())/self.get_loss_sta_ap_threhold()
         return t
     
     def get_interfering_node_matrix(self):

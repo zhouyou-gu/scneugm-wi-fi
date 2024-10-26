@@ -5,7 +5,7 @@ from scipy.sparse import csr_matrix
 from sim_src.util import *
 
 from sim_mld.base_model import base_model
-from sim_mld.sparse_transformer.generator.nn import EdgeMLP, JointDistribution
+from sim_mld.z_sparse_transformer.generator.nn import EdgeMLP, JointDistribution
 from torch_geometric.utils import to_undirected
 from torch_geometric.data import Data, Batch
 
@@ -39,6 +39,9 @@ class CnH_base(base_model):
         
         batch = Batch.from_data_list(data_list)
         approx = self.model.forward(batch.token,batch.edge_index).squeeze()
+
+        print(approx.mean().item(),approx[batch.target.squeeze()==1.].mean().item())
+        print(batch.target.squeeze().mean().item())
 
         loss = nn.functional.binary_cross_entropy(approx, batch.target, reduction="mean")
 
@@ -124,16 +127,16 @@ class graph_interpolator(base_model):
         beta = batch['beta']
         param = to_tensor(np.array([alpha,beta]))
         
-        log_prob = self.model.log_prob(param).squeeze()
+        log_prob_alpha, _ = self.model.log_prob_separately(param)
 
         rwd = self.get_rwd(n_slot,p_qosf)-self.model.get_avg_rwd().detach()
-        loss = - rwd*log_prob
+        loss = - rwd*log_prob_alpha.squeeze()
         loss.backward()
         self.model_optim.step()
         self.model_optim.zero_grad()
         
         self._printalltime(f"loss: {loss.item():.4f}, rwd: {rwd:.4f}, n_slot: {n_slot:.4f}, p_qosf: {p_qosf:.4f}, alpha: {alpha:.4f}, beta: {beta:.4f}, ")
-        self._printalltime(f"mean: {to_numpy(self.model.get_mean())}, variance: {to_numpy(self.model.get_covariance()).flatten()}")
+        self._printalltime(f"mean: {to_numpy(self.model.get_mean())}, variance: {to_numpy(self.model.get_variance()).flatten()}")
         self._add_np_log("loss",self.N_STEP,loss.item())
         
         l = nn.functional.mse_loss(self.model.get_avg_rwd(),rwd)
@@ -145,10 +148,11 @@ class graph_interpolator(base_model):
 
     @torch.no_grad()
     def get_rwd(self, n_slot, p_qosf):
-        if p_qosf > 0:
-            return to_tensor(n_slot)
-        else:
-            return - to_tensor(n_slot)
+        # if p_qosf > 0:
+        #     return to_tensor(n_slot)
+        # else:
+        #     return - to_tensor(n_slot)
+        return - to_tensor(n_slot)
 
     @torch.no_grad()
     def get_interpolation_coefficient(self):

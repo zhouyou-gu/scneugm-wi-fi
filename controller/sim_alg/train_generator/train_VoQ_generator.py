@@ -5,8 +5,8 @@ from scipy.sparse import csr_matrix
 from sim_src.ns3_ctrl.sim_sys import sim_sys
 from sim_src.ns3_ctrl.wifi_net_ctrl import wifi_net_config
 from working_dir_path import get_controller_path, get_ns3_path
-from sim_mld.sparse_transformer.tokenizer.model import tokenizer_base
-from sim_mld.sparse_transformer.generator.model import VoQ_base
+from sim_mld.tokenizer.model import tokenizer_base
+from sim_mld.z_sparse_transformer.generator.model import VoQ_base
 from sim_src.sim_env.env import WiFiNet
 from sim_src.sim_agt.sim_agt_base import sim_agt_base, agt_for_training
 from torch_geometric.data import Data, Batch
@@ -29,8 +29,9 @@ tk_model.eval()
 VoQ_generator_model = VoQ_base()
 
 N_TRAINING_STEP = 1000
-N_BATCH = 20
+N_BATCH = 100
 couter = 0
+WiFiNet.N_PACKETS = 1
 for i in range(N_TRAINING_STEP):
     batch = []
     sys_list = []
@@ -52,26 +53,18 @@ for i in range(N_TRAINING_STEP):
         
         # run ns3
         ns3sys = sim_sys(id=couter)
-        ns3sys.step(env=env,agt=agt)
-        sys_list.append(ns3sys)
-        
+        ret = ns3sys.step(env=env,agt=agt,sync=True)
+        qos_fail = WiFiNet.evaluate_qos(ret)                
+
         data = {}
         data['token'] = token
         data['edge_index'] = edge_index
         data['ns3sys_id'] = couter
         data['num_nodes'] = n_sta
+        data['target'] = qos_fail
+
         batch.append(data)
 
-    
-    while sys_list:
-        for s in sys_list[:]:  # Iterate over a copy of the list
-            if s.is_ns3_end():
-                ret = s.wait_ns3_end()
-                qos_fail = WiFiNet.evaluate_qos(ret)                
-                for d in batch:
-                    if d['ns3sys_id'] == s.id:
-                        d['target'] = qos_fail
-                sys_list.remove(s)
     VoQ_generator_model.step(batch)
 
 VoQ_generator_model.save(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")
