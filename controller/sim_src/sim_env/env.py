@@ -18,7 +18,7 @@ class WiFiNet(InterferenceHelper):
     RxSensitivity = -95
     #Preamble is successfully detection if the SNR is at or above this value (expressed in dB).
     PreambleDetectionThreshold = 0.
-    def __init__(self, cell_edge = 10., cell_size = 10, n_sta = 100, fre_Hz = 5.8e9, txp_dbm_hi = 0., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
+    def __init__(self, cell_edge = 10., cell_size = 10, n_sta = 100, fre_Hz = 5.8e9, txp_dbm_hi = 5., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
         """
         Initializes the simulation environment with the given parameters.
 
@@ -206,6 +206,7 @@ class WiFiNet(InterferenceHelper):
 
     def check_cell_edge_snr(self):
         self.check_snr_at_dis(self.cell_edge/2*math.sqrt(2))
+        self.check_snr_at_dis(0)
         return
     
     def check_detection_range(self):
@@ -225,7 +226,7 @@ class WiFiNet(InterferenceHelper):
             else:
                 a = midpoint
 
-        print("maximum detectable range", (a + b) / 2, "tx power", self.txp_dbm_hi, "RxSensitivity",self.RxSensitivity)
+        print("maximum detectable range", (a + b) / 2, "tx power", self.txp_dbm_hi, "RxSensitivity",self.RxSensitivity, "loss", InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,a))
         return
 
     def get_config(self):
@@ -264,10 +265,10 @@ class WiFiNet(InterferenceHelper):
 if __name__ == "__main__":
     test_obj = WiFiNet()
     test_obj.check_cell_edge_snr()   
-    # test_obj.check_detection_range()
+    test_obj.check_detection_range()
     # test_obj.check_snr_at_dis(10)   
     # test_obj.check_snr_at_dis(100)   
-
+    exit(0)
     print(test_obj.get_sta_states()[0:5])
     for k in test_obj.get_sta_states():
         print(k.__len__())

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class hashing_function(nn.Module):
-    def __init__(self, latent_dim=5, hash_dim=20, single_layer = False, hidden_layer=5):
+    def __init__(self, latent_dim=5, hash_dim=30, single_layer = False, hidden_layer=5):
         super(hashing_function, self).__init__()
         self.latent_dim = latent_dim
         self.hash_dim = hash_dim
@@ -30,7 +30,7 @@ class hashing_function(nn.Module):
         return torch.sign(output)
     
     @staticmethod
-    def loss_function(soft_code, target_collision_matrix, r_dis= 1., r_cor=0.1, r_bal=0.):
+    def loss_function(soft_code, target_collision_matrix, r_dis= 1., r_cor=0.2, r_bal=0.):
         num_soft_code = soft_code.size(0)
         num_hash_bits = soft_code.size(1)
         

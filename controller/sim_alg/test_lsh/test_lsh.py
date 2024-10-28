@@ -20,14 +20,14 @@ wifi_net_config.PROG_NAME = "sparse-wi-fi/ns3gym_test/env"
 # load tokenizer model
 tk_model = tokenizer_base()
 path = get_controller_path()
-path = os.path.join(path, "sim_alg/train_tokenizer/selected_nn/tokenizer_base.final.pt")
+path = os.path.join(path, "sim_alg/train_tokenizer/selected_nn/train_tokenizer-2024-October-26-23-49-11-ail/tokenizer_base.final.pt")
 tk_model.load_model(path=path)
 tk_model.eval()
 
 # load sparser model
 sp_model = sparser_base()
 path = get_controller_path()
-path = os.path.join(path, "sim_alg/train_sparser/selected_nn/sparser_base.final.pt")
+path = os.path.join(path, "sim_alg/train_sparser/log-train_sparser/train_sparser-2024-October-27-03-14-01-ail/sparser_base.final.pt")
 sp_model.load_model(path=path)
 sp_model.eval()
 
@@ -36,7 +36,7 @@ N_TRAINING_STEP = 10
 WiFiNet.N_PACKETS = 1
 for i in range(N_TRAINING_STEP):
     # get network state 
-    env = WiFiNet(seed=GetSeed())
+    env = WiFiNet(seed=GetSeed(),n_sta=1000)
     b = env.get_sta_states()
     
     # tokenize sta states
@@ -50,11 +50,16 @@ for i in range(N_TRAINING_STEP):
     # get hard code
     hc = sp_model.get_output_np(l)
     hc = sp_model.binarize_hard_code(hc)
-    
+    print(hc.shape)
     # lsh
-    lsh = LSH(num_bits=sp_model.model.hash_dim, num_tables=3, bits_per_hash=15)
+    lsh = LSH(num_bits=sp_model.model.hash_dim, num_tables=30, bits_per_hash=10)
     lsh.build_hash_tables(hc)
-    approx_collision_matrix = lsh.export_adjacency_matrix()
+    hamming_distance_threhold = None
+    approx_collision_matrix = lsh.export_adjacency_matrix(hamming_distance_threhold)
+    print(approx_collision_matrix.nnz,hamming_distance_threhold)
+    # approx_collision_matrix = target_collision_matrix.multiply(approx_collision_matrix)
+    # approx_collision_matrix.eliminate_zeros()
+
     res = lsh.compare_adjacency_matrices(approx_collision_matrix,target_collision_matrix)
     print(res)
 
@@ -68,7 +73,7 @@ for i in range(N_TRAINING_STEP):
     qos_fail = WiFiNet.evaluate_qos(ret)   
     print(np.mean(qos_fail),np.max(act)+1)
         
-    act = agt.greedy_coloring(scipy.sparse.csr_matrix(env.get_interfering_node_matrix()))
+    act = agt.greedy_coloring(scipy.sparse.csr_matrix(env.get_CH_matrix()))
     agt.set_action(act)
     ns3sys = sim_sys()
     ret = ns3sys.step(env=env,agt=agt,seed=env.seed,sync=True)

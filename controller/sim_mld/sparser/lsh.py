@@ -2,6 +2,10 @@ import numpy as np
 from collections import defaultdict
 from scipy.sparse import coo_matrix, csr_matrix, triu
 
+import numpy as np
+from collections import defaultdict
+from scipy.sparse import coo_matrix, csr_matrix, triu
+
 class LSH:
     def __init__(self, num_bits, num_tables, bits_per_hash):
         self.num_bits = num_bits              # Length of binary vectors
@@ -12,7 +16,8 @@ class LSH:
             np.random.choice(num_bits, bits_per_hash, replace=False)
             for _ in range(num_tables)
         ]
-    
+        self.vectors = None  # To store the binary vectors
+
     def build_hash_tables(self, vectors):
         """
         Build hash tables from a list of binary vectors in batch without explicit loops over vectors.
@@ -24,6 +29,7 @@ class LSH:
         num_vectors = vectors.shape[0]
         vector_ids = np.arange(num_vectors)
         self.num_vectors = num_vectors  # Store for later use
+        self.vectors = vectors  # Store vectors for Hamming distance computations
 
         for t in range(self.num_tables):
             indices = self.hash_functions[t]
@@ -80,33 +86,64 @@ class LSH:
 
         return hash_table
 
-    def export_adjacency_matrix(self):
+    def export_adjacency_matrix(self, hamming_threshold=None):
         """
         Export the colliding edges as a binary adjacency matrix.
-        
+        Optionally filters pairs based on Hamming distance.
+
+        Parameters:
+            hamming_threshold (int, optional): Maximum Hamming distance to include a pair. 
+                                               If None, all colliding pairs are included.
+
         Returns:
-            scipy.sparse.coo_matrix: Sparse adjacency matrix of size (N, N).
+            scipy.sparse.csr_matrix: Sparse adjacency matrix of size (N, N).
         """
+        if self.vectors is None:
+            raise ValueError("Vectors have not been stored. Please call build_hash_tables first.")
+
         num_vectors = self.num_vectors
         rows = []
         cols = []
+
+        vectors = self.vectors  # For easier access
+
         for t in range(self.num_tables):
             hash_table = self.hash_tables[t]
             for vector_ids in hash_table.values():
                 if len(vector_ids) > 1:
-                    # Create all pairs of vector IDs
+                    # Create all unique pairs of vector IDs within the bucket
                     vector_ids = np.array(vector_ids)
                     idx1, idx2 = np.triu_indices(len(vector_ids), k=1)
-                    pairs = vector_ids[idx1], vector_ids[idx2]
+                    pair1 = vector_ids[idx1]
+                    pair2 = vector_ids[idx2]
+
+                    if hamming_threshold is not None:
+                        # Compute Hamming distances for all pairs
+                        # XOR the vectors and sum the differing bits
+                        xor = vectors[pair1] != vectors[pair2]
+                        hamming_distances = np.sum(xor, axis=1)
+                        # Filter pairs where Hamming distance is less than the threshold
+                        valid = hamming_distances < hamming_threshold
+                        pair1 = pair1[valid]
+                        pair2 = pair2[valid]
+
                     # Append to rows and cols
-                    rows.extend(pairs[0])
-                    cols.extend(pairs[1])
+                    rows.extend(pair1)
+                    cols.extend(pair2)
+
+        if not rows:
+            # No edges to add
+            adjacency_matrix = csr_matrix((num_vectors, num_vectors), dtype=np.uint8)
+            return adjacency_matrix
+
         # Create symmetric adjacency matrix
         data = np.ones(len(rows), dtype=np.uint8)
         adjacency_matrix = coo_matrix((data, (rows, cols)), shape=(num_vectors, num_vectors))
-        # Since the adjacency matrix is symmetric, we need to add the transpose
+        # Since the adjacency matrix is symmetric, add the transpose
         adjacency_matrix = adjacency_matrix + adjacency_matrix.transpose()
-        # Optionally convert to CSR format for efficient arithmetic and matrix vector operations
+        # Remove any duplicate entries
+        adjacency_matrix.data = np.clip(adjacency_matrix.data, 0, 1)
+        # Convert to CSR format for efficient arithmetic and matrix vector operations
         adjacency_matrix = adjacency_matrix.tocsr()
         return adjacency_matrix
 
@@ -173,7 +210,6 @@ class LSH:
             'Approx Negatives': AN,
             'True Positives': TP,
             'False Positives': FP,
-            'False Positives': FP,
             'False Negatives': FN,
             'True Negatives': TN,
             'Precision': precision,
@@ -181,9 +217,7 @@ class LSH:
             'F1 Score': f1_score
         }
         return results
-
-
-
+    
 if __name__ == "__main__":
     import numpy as np
     from working_dir_path import get_controller_path

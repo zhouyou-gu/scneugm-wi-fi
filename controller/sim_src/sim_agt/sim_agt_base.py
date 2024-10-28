@@ -6,7 +6,7 @@ from sim_src.util import STATS_OBJECT
 
 class sim_agt_base(STATS_OBJECT):
     TWT_START_TIME = 1e6
-    TWT_ASLOT_TIME = 2000
+    TWT_ASLOT_TIME = 200
     def __init__(self):
         self.env:WiFiNet = None
         self.cfg = {}        
