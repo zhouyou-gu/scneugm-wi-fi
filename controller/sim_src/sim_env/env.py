@@ -18,7 +18,7 @@ class WiFiNet(InterferenceHelper):
     RxSensitivity = -95
     #Preamble is successfully detection if the SNR is at or above this value (expressed in dB).
     PreambleDetectionThreshold = 0.
-    def __init__(self, cell_edge = 10., cell_size = 10, n_sta = 100, fre_Hz = 5.8e9, txp_dbm_hi = 5., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
+    def __init__(self, cell_edge = 10., cell_size = 10, n_sta = 100, fre_Hz = 5.8e9, txp_dbm_hi = 0., packet_bit = 800, bandwidth_hz = 20e6, max_err = 1e-5, seed=1):
         """
         Initializes the simulation environment with the given parameters.
 

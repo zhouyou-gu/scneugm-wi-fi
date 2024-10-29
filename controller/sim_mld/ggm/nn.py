@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from torch_geometric.nn.conv.transformer_conv import TransformerConv
+from torch_geometric.nn.conv.transformer_conv import *
 
 class EdgeMLP(nn.Module):
     def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=50, num_hidden_layers=3, out_dim=1, activation=nn.GELU(), output_activation=None):
@@ -59,8 +58,37 @@ class EdgeMLP(nn.Module):
 
         return out
 
+class SigmoidTransformerConv(TransformerConv):
+    def __init__(self, in_channels, out_channels, heads=1, **kwargs):
+        super(SigmoidTransformerConv, self).__init__(in_channels, out_channels, heads, **kwargs)
+
+    def message(self, query_i: Tensor, key_j: Tensor, value_j: Tensor,
+                edge_attr: OptTensor, index: Tensor, ptr: OptTensor,
+                size_i: Optional[int]) -> Tensor:
+
+        if self.lin_edge is not None:
+            assert edge_attr is not None
+            edge_attr = self.lin_edge(edge_attr).view(-1, self.heads,
+                                                    self.out_channels)
+            key_j = key_j + edge_attr
+
+        # Compute attention scores without softmax
+        alpha = (query_i * key_j).sum(dim=-1) / math.sqrt(self.out_channels)
+
+        # Apply sigmoid to ensure alpha is between 0 and 1
+        alpha = torch.sigmoid(alpha)
+        self._alpha = alpha
+        alpha = F.dropout(alpha, p=self.dropout, training=self.training)
+
+        out = value_j
+        if edge_attr is not None:
+            out = out + edge_attr
+
+        out = out * alpha.view(-1, self.heads, 1)
+        return out
+
 class GraphTransformer(nn.Module):
-    def __init__(self, input_dim=6, hidden_dim=5, heads=5, num_layers=3, edge_dim=2):
+    def __init__(self, input_dim=6, hidden_dim=10, heads=5, num_layers=1, edge_dim=2):
         """
         Initializes the GraphTransformer model.
 
@@ -76,22 +104,36 @@ class GraphTransformer(nn.Module):
         # Initial linear layer to project node features to hidden_dim * heads
         self.i_lin = nn.Sequential(
             nn.Linear(input_dim, hidden_dim * heads),
+            nn.GELU(),
+            nn.Linear(hidden_dim * heads, hidden_dim * heads),
+            nn.GELU(),
+            nn.Linear(hidden_dim * heads, hidden_dim * heads)
         )
-        
+        self.edge_lin = nn.Sequential(
+            nn.Linear(edge_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
         # Create a list of TransformerConv layers
         self.convs = nn.ModuleList()
         for _ in range(num_layers):
             self.convs.append(
-                TransformerConv(
+                SigmoidTransformerConv(
                     in_channels=hidden_dim * heads,
                     out_channels=hidden_dim,
                     heads=heads,
-                    edge_dim=edge_dim
+                    edge_dim=hidden_dim
                 )
             )
         
         # Output linear layer to produce final node outputs
         self.o_lin = nn.Sequential(
+            nn.Linear(hidden_dim * heads, hidden_dim * heads),
+            nn.GELU(),
+            nn.Linear(hidden_dim * heads, hidden_dim * heads),
+            nn.GELU(),
             nn.Linear(hidden_dim * heads, 1),
             nn.Sigmoid()
         )
@@ -110,7 +152,7 @@ class GraphTransformer(nn.Module):
         """
         # Project the input node features to the hidden dimension multiplied by the number of heads
         x = self.i_lin(x)
-
+        edge_attr = self.edge_lin(edge_attr)
         # Pass the node features through each TransformerConv layer
         for conv in self.convs:
             x = conv(x, edge_index, edge_attr=edge_attr)
@@ -138,7 +180,7 @@ class GraphGenerator(nn.Module):
         )
         self.graph_evaluator = GraphTransformer(
             input_dim=node_dim + token_dim,
-            edge_dim=edge_dim + 1  # Including the generated edge value
+            edge_dim=edge_dim + 2  # Including the generated edge value and color collision
         )
   
     def generate_graph(self, x, token, edge_attr, edge_index):

@@ -74,21 +74,28 @@ for i in range(N_TRAINING_STEP):
     agt.set_env(env)
     act = agt.greedy_coloring(csr_matrix(adj))
     agt.set_action(act) # place all stas in one slot
+    
+    color_adj = agt.get_adj_matrix_from_edge_index(env.n_sta,agt.get_same_color_edges(act)).todense()
+    color_adj = np.asarray(color_adj)
+    color_collision, _ = ggm.export_all_edges(color_adj)
+    print(color_collision.shape)
     nc = np.max(act)+1
     # run ns3
     ns3sys = sim_sys(id=i)
     ret = ns3sys.step(env=env,agt=agt,sync=True)
     qos_fail = WiFiNet.evaluate_qos(ret)
     rwd = 1-qos_fail
+    # rwd = np.zeros(env.n_sta)
     # rwd = rwd/nc*env.n_sta/1000.
-    n_success_sta = (1-qos_fail).sum()
+    n_fail = qos_fail.sum()
 
-    print("sta count",env.n_sta,n_success_sta,nc)
+    print("sta count",env.n_sta,n_fail,nc)
     batch = {}
     batch["x"] = A_loss
     batch["token"] = l
     batch["edge_value"] = edge_value
     batch["edge_attr"] = edge_attr
+    batch["color_collision"] = color_collision
     batch["edge_index"] = edge_index
     batch["q"] = rwd
     batch["nc"] = nc

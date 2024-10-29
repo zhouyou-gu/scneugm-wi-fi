@@ -17,7 +17,7 @@ class wifi_net_config:
             
         self.CMD_CONFIGS = {}
         self.CMD_CONFIGS["verbose"] = 0 # 0/1 for verbose enabled or disabled
-        self.CMD_CONFIGS["MaxNumRetx"] = 1 # default, change here
+        self.CMD_CONFIGS["MaxNumRetx"] = 5 # default, change here
         self.CMD_CONFIGS["phyMode"] = "OfdmRate6Mbps" # default, do not change
         self.CMD_CONFIGS["packetSize"] = 100 # updated in env
         self.CMD_CONFIGS["numPackets"] = 100 # updated in env

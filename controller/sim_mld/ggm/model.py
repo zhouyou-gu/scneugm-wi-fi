@@ -33,28 +33,43 @@ class GGM(base_model):
         token = to_tensor(batch["token"])
         edge_value = to_tensor(batch["edge_value"])
         edge_attr = to_tensor(batch["edge_attr"])
+        color_collision = to_tensor(batch["color_collision"])
+        edge_attr_with_color_collision = torch.cat([edge_attr.unsqueeze(-1),color_collision.unsqueeze(-1)],dim=-1)
+
         edge_index = to_tensor(batch["edge_index"],dtype=LONG_INTEGER)
         # mask = to_tensor(batch["mis"])
         q_target = to_tensor(batch["q"])
         nc = to_tensor(batch["nc"])
         
-        q_approx = self.model.evaluate_graph(x,token,edge_value,edge_attr,edge_index).squeeze()
-        loss_eva = nn.functional.mse_loss(q_approx, q_target, reduction="mean")
+        q_approx = self.model.evaluate_graph(x,token,edge_value,edge_attr_with_color_collision,edge_index).squeeze()
+        loss_eva = nn.functional.binary_cross_entropy(q_approx, q_target, reduction="mean")
         self.eva_optim.zero_grad()
         loss_eva.backward()
         self.eva_optim.step()
-        
+        self.eva_optim.zero_grad()
+
         self._printalltime(f"q_approx: {q_approx.mean().item():.4f}, q_target: {q_target.mean().item():.4f}")
 
         edge_value = self.model.generate_graph(x,token,edge_attr,edge_index).squeeze()
-        q_approx = self.model.evaluate_graph(x,token,edge_value,edge_attr,edge_index).squeeze()
-        loss_gen = -q_approx.mean()
-        
+        q_approx = self.model.evaluate_graph(x,token,edge_value,edge_attr_with_color_collision,edge_index).squeeze()
+        sum_edge_value = torch.zeros_like(q_approx).scatter_add_(0, edge_index[1], edge_value)
+        # loss_gen = -q_approx[q_target==0].mean() 
+        # loss_gen = nn.functional.binary_cross_entropy(edge_value,(edge_attr>0).float(), reduction="mean")
+        if q_target.min() == 0:
+            loss_gen = -(q_approx).mean()
+        else:
+            loss_gen = sum_edge_value.mean()
+        # loss_gen = -sum_edge_value[q_target==0].mean() + sum_edge_value[q_target==1].mean()
+        # self._printalltime(f"(q_target.min() == 0).float(): {(q_target.min() == 0).float()}, (q_target.min() != 0).float(): {(q_target.min() != 0).float():.4f}")
+
         self.gen_optim.zero_grad()
         loss_gen.backward()
         self.gen_optim.step()
+        self.gen_optim.zero_grad()
+
         self._printalltime(f"edge_value: {edge_value.mean().item():.4f}, q_approx: {q_approx.mean().item():.4f}")
         self._printalltime(f"edge_value>0.5: {(edge_value>0.5).sum().item():.4f}, edge_value<0.5: {(edge_value<0.5).sum().item():.4f}")
+        self._printalltime(f"(edge_attr>0).float().sum(): {(edge_attr>0).float().sum()}, (edge_attr==0).float(): {(edge_attr==0).float().sum()}")
 
         self._printalltime(f"loss_eva: {loss_eva.item():.4f}, loss_gen: {loss_gen.item():.4f}")
         self._add_np_log("loss",self.N_STEP,loss_eva.item(),loss_gen.item())
