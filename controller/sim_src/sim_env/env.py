@@ -75,6 +75,13 @@ class WiFiNet(InterferenceHelper):
         self._config_sta_locs()
         self._config_sta_dirs()
 
+    def apply_sta_filter(self, filter):
+        n_sta = self.n_sta
+        self.n_sta = filter.sum()
+        self.sta_locs = self.sta_locs[filter==1]
+        self.sta_dirs = self.sta_dirs[filter==1]
+        print(f"env.apply_sta_filter, original n_sta {n_sta}, n_sta {self.n_sta}, loc shape {self.sta_locs.shape}, dir shape {self.sta_dirs.shape}")
+        
     def get_loss_ap_ap(self):
         ret = np.zeros((self.n_ap,self.n_ap))
         for i in range(self.n_ap):
@@ -123,6 +130,17 @@ class WiFiNet(InterferenceHelper):
             state_list.append(np.asarray(tmp_list))
         return state_list
     
+    def get_sta_to_associated_ap_loss(self):
+        loss_sta_ap = self.get_loss_sta_ap()
+        asso = np.argmin(loss_sta_ap,axis=1)
+        S_loss = loss_sta_ap[:, asso]
+        S_loss = -(S_loss - self.get_loss_sta_ap_threhold())/self.get_loss_sta_ap_threhold()
+        S_loss[S_loss<=0] = 0   
+        np.fill_diagonal(S_loss,0)
+        A_loss = np.min(loss_sta_ap,axis=1)
+        A_loss = -(A_loss - self.get_loss_sta_ap_threhold())/self.get_loss_sta_ap_threhold()
+        return S_loss, A_loss
+    
     def _normalize_sta_tuple(self,t):
         t[0] = (t[0] - self.grid_edge/2.)/self.grid_edge
         t[1] = (t[1] - self.grid_edge/2.)/self.grid_edge
@@ -133,8 +151,8 @@ class WiFiNet(InterferenceHelper):
         ret = np.zeros((self.n_sta,self.n_sta))
         loss_sta_ap = self.get_loss_sta_ap()
         asso = np.argmin(loss_sta_ap,axis=1)
-        S_gain = loss_sta_ap[:, asso]
-        ret[S_gain<=self.get_loss_sta_ap_threhold()] = 1   
+        S_loss = loss_sta_ap[:, asso]
+        ret[S_loss<=self.get_loss_sta_ap_threhold()] = 1   
         np.fill_diagonal(ret,0)
         return ret
     
@@ -264,11 +282,13 @@ class WiFiNet(InterferenceHelper):
 
 if __name__ == "__main__":
     test_obj = WiFiNet()
+    test_obj.apply_sta_filter(np.random.randint(0, 2, size=test_obj.n_sta))
+    exit(0)
+
     test_obj.check_cell_edge_snr()   
     test_obj.check_detection_range()
     # test_obj.check_snr_at_dis(10)   
     # test_obj.check_snr_at_dis(100)   
-    exit(0)
     print(test_obj.get_sta_states()[0:5])
     for k in test_obj.get_sta_states():
         print(k.__len__())

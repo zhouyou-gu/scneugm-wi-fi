@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch import optim
 
-from sim_src.util import USE_CUDA, STATS_OBJECT, soft_update_inplace
+from sim_src.util import USE_CUDA, STATS_OBJECT, hard_update_inplace, soft_update_inplace
 
 
 class base_model(STATS_OBJECT):
@@ -18,8 +18,8 @@ class base_model(STATS_OBJECT):
 
         self.init_model()
         
-        self.model_optim = optim.Adam(self.model.parameters(), lr=self.LR)
-
+        self.init_optim()
+        
         self.move_model_to_gpu()
     
     def move_model_to_gpu(self):
@@ -34,24 +34,31 @@ class base_model(STATS_OBJECT):
     def init_model(self):
         pass
 
+    def init_optim(self):
+        self.model_optim = optim.Adam(self.model.parameters(), lr=self.LR)
+
+
     def load_model(self, path, path_target = None):
         if not path_target:
             path_target = path
         self.model = self._load(path)
         if self.WITH_TARGET:
             self.model_target = self._load(path_target)
-        self.model_optim = optim.Adam(self.model.parameters(), lr=self.LR)
-
+        self.init_optim()
+        
     def _load(self, path):
         if USE_CUDA:
             return torch.load(path, map_location=torch.device('cuda', torch.cuda.current_device()), weights_only=False)
         else:
             return torch.load(path, map_location=torch.device('cpu'),weights_only=False)
     
-    def update_nn(self):
+    def update_target_nn(self,hard=False):
         if self.WITH_TARGET:
-            soft_update_inplace(self.model_target, self.model, self.TAU)
-
+            if hard:
+                soft_update_inplace(self.model_target, self.model, self.TAU)
+            else:
+                hard_update_inplace(self.model_target, self.model)
+            
     def save(self, path: str, postfix: str):
         try:
             os.mkdir(path)
