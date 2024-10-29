@@ -57,26 +57,90 @@ class EdgeMLP(nn.Module):
         out = self.mlp(edge_features)  # [num_edges, out_dim]
 
         return out
+# Custom TransformerConv that applies a mask to the attention scores based on multi-dimensional edge attributes
+class MaskedTransformerConv(TransformerConv):
+    def forward(
+        self,
+        x: Union[Tensor, PairTensor],
+        edge_index: Adj,
+        edge_attr: OptTensor = None,
+        return_attention_weights: Optional[bool] = None,
+    ) -> Union[
+            Tensor,
+            Tuple[Tensor, Tuple[Tensor, Tensor]],
+            Tuple[Tensor, SparseTensor],
+    ]:
+        """
+        Runs the forward pass of the MaskedTransformerConv module, applying a mask to attention scores based on edge attributes.
 
-class SigmoidTransformerConv(TransformerConv):
-    def __init__(self, in_channels, out_channels, heads=1, **kwargs):
-        super(SigmoidTransformerConv, self).__init__(in_channels, out_channels, heads, **kwargs)
+        Args:
+            x (torch.Tensor or (torch.Tensor, torch.Tensor)): The input node features.
+            edge_index (torch.Tensor or SparseTensor): The edge indices.
+            edge_attr (torch.Tensor, optional): The edge features with 3 dimensions.
+                The last two features are binary and define the attention mask.
+            return_attention_weights (bool, optional): If set to :obj:`True`,
+                will additionally return the tuple
+                :obj:`(edge_index, attention_weights)`, holding the computed
+                attention weights for each edge. (default: :obj:`None`)
 
-    def message(self, query_i: Tensor, key_j: Tensor, value_j: Tensor,
-                edge_attr: OptTensor, index: Tensor, ptr: OptTensor,
-                size_i: Optional[int]) -> Tensor:
+        Returns:
+            Tensor or Tuple: The output node features, and optionally the attention weights.
+        """
+        if edge_attr is not None and edge_attr.size(1) >= 3:
+            # Extract mask based on the last two binary edge attributes
+            # In the forward method of MaskedTransformerConv, set mask based on the second feature and not the third feature
+            mask = (edge_attr[:, 1] > 0) & (edge_attr[:, 2] == 0)
+            edge_attr_main = edge_attr[:, :-2]  # Shape: [num_edges, 1]
+        else:
+            mask = None
+            edge_attr_main = edge_attr
 
-        if self.lin_edge is not None:
-            assert edge_attr is not None
-            edge_attr = self.lin_edge(edge_attr).view(-1, self.heads,
-                                                    self.out_channels)
+        return super().forward(
+            x,
+            edge_index,
+            edge_attr=edge_attr_main,
+            return_attention_weights=return_attention_weights,
+            mask=mask
+        )
+
+    def message(
+        self,
+        query_i: Tensor,
+        key_j: Tensor,
+        value_j: Tensor,
+        edge_attr: OptTensor,
+        mask: OptTensor,
+        index: Tensor,
+        ptr: OptTensor,
+        size_i: Optional[int]
+    ) -> Tensor:
+        """
+        Constructs messages for each edge, applying a mask to the attention scores based on edge attributes.
+
+        Args:
+            query_i (Tensor): Query vectors for the target nodes.
+            key_j (Tensor): Key vectors for the source nodes.
+            value_j (Tensor): Value vectors for the source nodes.
+            edge_attr (Tensor, optional): Transformed edge features.
+            mask (Tensor, optional): Boolean mask indicating whether to attend to the edge.
+            index (Tensor): Target node indices for each edge.
+            ptr (Tensor, optional): Pointers for batched processing.
+            size_i (int, optional): Number of target nodes.
+
+        Returns:
+            Tensor: The messages to be aggregated for each target node.
+        """
+        if self.lin_edge is not None and edge_attr is not None:
+            edge_attr = self.lin_edge(edge_attr).view(-1, self.heads, self.out_channels)
             key_j = key_j + edge_attr
 
-        # Compute attention scores without softmax
         alpha = (query_i * key_j).sum(dim=-1) / math.sqrt(self.out_channels)
 
-        # Apply sigmoid to ensure alpha is between 0 and 1
-        alpha = torch.sigmoid(alpha)
+        if mask is not None:
+            # Apply mask to attention scores, setting masked positions to -inf
+            alpha = alpha.masked_fill(~mask.unsqueeze(1), -float('inf'))
+
+        alpha = softmax(alpha, index, ptr, size_i)
         self._alpha = alpha
         alpha = F.dropout(alpha, p=self.dropout, training=self.training)
 
@@ -84,9 +148,8 @@ class SigmoidTransformerConv(TransformerConv):
         if edge_attr is not None:
             out = out + edge_attr
 
-        out = out * alpha.view(-1, self.heads, 1)
+        out = out * alpha.unsqueeze(-1)
         return out
-
 class GraphTransformer(nn.Module):
     def __init__(self, input_dim=6, hidden_dim=10, heads=5, num_layers=1, edge_dim=2):
         """
@@ -120,7 +183,7 @@ class GraphTransformer(nn.Module):
         self.convs = nn.ModuleList()
         for _ in range(num_layers):
             self.convs.append(
-                SigmoidTransformerConv(
+                TransformerConv(
                     in_channels=hidden_dim * heads,
                     out_channels=hidden_dim,
                     heads=heads,
