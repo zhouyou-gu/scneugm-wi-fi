@@ -40,7 +40,7 @@ ggm = GGM()
 
 N_TRAINING_STEP = 10000
 WiFiNet.N_PACKETS = 1
-for i in range(N_TRAINING_STEP):
+def run_test():
     env = WiFiNet(seed=GetSeed(),n_sta=1000)
     
     # tokenize sta states
@@ -65,11 +65,6 @@ for i in range(N_TRAINING_STEP):
     edge_value = ggm.get_output_np_edge_weight(A_loss,l,edge_attr,edge_index)
     adj = ggm.construct_adjacency_matrix(edge_index,edge_value,env.n_sta)
     
-    # mis = ggm.maximum_independent_set(adj)
-    # n_selected_sta = mis.sum()
-    # env.apply_sta_filter(mis)
- 
-
     agt = agt_for_training()
     agt.set_env(env)
     act = agt.greedy_coloring(csr_matrix(adj))
@@ -84,9 +79,8 @@ for i in range(N_TRAINING_STEP):
     ret = ns3sys.step(env=env,agt=agt,sync=True)
     qos_fail = WiFiNet.evaluate_qos(ret)
     rwd = 1-qos_fail
+    
     # rwd = np.zeros(env.n_sta)
-    # rwd = rwd/nc*env.n_sta/1000.
-    n_fail = qos_fail.sum()
 
     batch = {}
     batch["x"] = A_loss
@@ -98,5 +92,26 @@ for i in range(N_TRAINING_STEP):
     batch["q"] = rwd
     batch["nc"] = nc
     batch["n_sta"] = env.n_sta
-    # batch["mis"] = mis
     ggm.step(batch)
+
+import cProfile
+import pstats
+import io
+
+# Create a profiler
+pr = cProfile.Profile()
+pr.enable()  # Start profiling
+
+for i in range(N_TRAINING_STEP):
+    run_test()
+    
+pr.disable()  # Stop profiling
+
+# Create a string stream to capture the profiling data
+s = io.StringIO()
+sortby = 'cumulative'
+ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+ps.print_stats(10)  # Print the top 10 functions
+
+# Output the profiling results
+print(s.getvalue())

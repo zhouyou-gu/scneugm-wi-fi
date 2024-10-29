@@ -132,11 +132,11 @@ class WiFiNet(InterferenceHelper):
         loss_sta_ap = self.get_loss_sta_ap()
         asso = np.argmin(loss_sta_ap,axis=1)
         S_loss = loss_sta_ap[:, asso]
-        S_loss = -(S_loss - self.get_loss_sta_ap_threhold())/self.get_loss_sta_ap_threhold()
+        S_loss = -(S_loss - self.get_loss_sta_ap_threhold())/10
         S_loss[S_loss<=0] = 0   
         np.fill_diagonal(S_loss,0)
         A_loss = np.min(loss_sta_ap,axis=1)
-        A_loss = -(A_loss - self.get_loss_sta_ap_threhold())/self.get_loss_sta_ap_threhold()
+        A_loss = -(A_loss - self.get_loss_sta_ap_threhold())/10
         return S_loss, A_loss
     
     def _normalize_sta_tuple(self,t):

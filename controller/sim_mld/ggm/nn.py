@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch_geometric.nn.conv.transformer_conv import *
 
 class EdgeMLP(nn.Module):
-    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=50, num_hidden_layers=3, out_dim=1, activation=nn.GELU(), output_activation=None):
+    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=30, num_hidden_layers=3, out_dim=1, activation=nn.ReLU(), output_activation=None):
         super(EdgeMLP, self).__init__()
         layers = []
 
@@ -57,90 +57,34 @@ class EdgeMLP(nn.Module):
         out = self.mlp(edge_features)  # [num_edges, out_dim]
 
         return out
-# Custom TransformerConv that applies a mask to the attention scores based on multi-dimensional edge attributes
+
+
+# Custom TransformerConv that applies a mask to the attention scores based on edge attributes
 class MaskedTransformerConv(TransformerConv):
-    def forward(
-        self,
-        x: Union[Tensor, PairTensor],
-        edge_index: Adj,
-        edge_attr: OptTensor = None,
-        return_attention_weights: Optional[bool] = None,
-    ) -> Union[
-            Tensor,
-            Tuple[Tensor, Tuple[Tensor, Tensor]],
-            Tuple[Tensor, SparseTensor],
-    ]:
-        """
-        Runs the forward pass of the MaskedTransformerConv module, applying a mask to attention scores based on edge attributes.
+    def message(self, query_i: Tensor, key_j: Tensor, value_j: Tensor,
+                edge_attr: OptTensor, index: Tensor, ptr: OptTensor,
+                size_i: Optional[int]) -> Tensor:
 
-        Args:
-            x (torch.Tensor or (torch.Tensor, torch.Tensor)): The input node features.
-            edge_index (torch.Tensor or SparseTensor): The edge indices.
-            edge_attr (torch.Tensor, optional): The edge features with 3 dimensions.
-                The last two features are binary and define the attention mask.
-            return_attention_weights (bool, optional): If set to :obj:`True`,
-                will additionally return the tuple
-                :obj:`(edge_index, attention_weights)`, holding the computed
-                attention weights for each edge. (default: :obj:`None`)
-
-        Returns:
-            Tensor or Tuple: The output node features, and optionally the attention weights.
-        """
-        if edge_attr is not None and edge_attr.size(1) >= 3:
-            # Extract mask based on the last two binary edge attributes
-            # In the forward method of MaskedTransformerConv, set mask based on the second feature and not the third feature
-            mask = (edge_attr[:, 1] > 0) & (edge_attr[:, 2] == 0)
-            edge_attr_main = edge_attr[:, :-2]  # Shape: [num_edges, 1]
-        else:
-            mask = None
-            edge_attr_main = edge_attr
-
-        return super().forward(
-            x,
-            edge_index,
-            edge_attr=edge_attr_main,
-            return_attention_weights=return_attention_weights,
-            mask=mask
-        )
-
-    def message(
-        self,
-        query_i: Tensor,
-        key_j: Tensor,
-        value_j: Tensor,
-        edge_attr: OptTensor,
-        mask: OptTensor,
-        index: Tensor,
-        ptr: OptTensor,
-        size_i: Optional[int]
-    ) -> Tensor:
-        """
-        Constructs messages for each edge, applying a mask to the attention scores based on edge attributes.
-
-        Args:
-            query_i (Tensor): Query vectors for the target nodes.
-            key_j (Tensor): Key vectors for the source nodes.
-            value_j (Tensor): Value vectors for the source nodes.
-            edge_attr (Tensor, optional): Transformed edge features.
-            mask (Tensor, optional): Boolean mask indicating whether to attend to the edge.
-            index (Tensor): Target node indices for each edge.
-            ptr (Tensor, optional): Pointers for batched processing.
-            size_i (int, optional): Number of target nodes.
-
-        Returns:
-            Tensor: The messages to be aggregated for each target node.
-        """
-        if self.lin_edge is not None and edge_attr is not None:
-            edge_attr = self.lin_edge(edge_attr).view(-1, self.heads, self.out_channels)
+        if self.lin_edge is not None:
+            assert edge_attr is not None
+            if edge_attr.size(1) < 3:
+                raise ValueError("edge_attr must have at least 3 features for masking.")
+            mask = edge_attr[:, -2] * (1-edge_attr[:, -1])
+            edge_attr_main = edge_attr[:, :-2]
+            edge_attr = self.lin_edge(edge_attr_main).view(-1, self.heads,
+                                                      self.out_channels)
             key_j = key_j + edge_attr
 
         alpha = (query_i * key_j).sum(dim=-1) / math.sqrt(self.out_channels)
+        alpha = torch.sigmoid(alpha)
 
+        # alpha = softmax(alpha, index, ptr, size_i)
         if mask is not None:
-            # Apply mask to attention scores, setting masked positions to -inf
-            alpha = alpha.masked_fill(~mask.unsqueeze(1), -float('inf'))
-
-        alpha = softmax(alpha, index, ptr, size_i)
+            # Expand mask to match the number of heads
+            mask = mask.unsqueeze(1).expand(-1, self.heads)  # Shape: [num_edges, heads]
+            # Apply mask: set attention scores to -inf where mask is False
+            alpha = alpha*mask
+        
         self._alpha = alpha
         alpha = F.dropout(alpha, p=self.dropout, training=self.training)
 
@@ -148,10 +92,12 @@ class MaskedTransformerConv(TransformerConv):
         if edge_attr is not None:
             out = out + edge_attr
 
-        out = out * alpha.unsqueeze(-1)
+        out = out * alpha.view(-1, self.heads, 1)
         return out
+
 class GraphTransformer(nn.Module):
-    def __init__(self, input_dim=6, hidden_dim=10, heads=5, num_layers=1, edge_dim=2):
+    COLORING_RELATED_EDGE_DIM =2
+    def __init__(self, input_dim=6, hidden_dim=10, heads=5, num_layers=3, edge_dim=1, activation=nn.ReLU(),):
         """
         Initializes the GraphTransformer model.
 
@@ -163,20 +109,21 @@ class GraphTransformer(nn.Module):
             edge_dim (int): Dimension of the edge features.
         """
         super(GraphTransformer, self).__init__()
-        
+        assert edge_dim>self.COLORING_RELATED_EDGE_DIM, "edge_dim needs >= 3"
+
         # Initial linear layer to project node features to hidden_dim * heads
         self.i_lin = nn.Sequential(
             nn.Linear(input_dim, hidden_dim * heads),
-            nn.GELU(),
+            activation,
             nn.Linear(hidden_dim * heads, hidden_dim * heads),
-            nn.GELU(),
+            activation,
             nn.Linear(hidden_dim * heads, hidden_dim * heads)
         )
         self.edge_lin = nn.Sequential(
-            nn.Linear(edge_dim, hidden_dim),
-            nn.GELU(),
+            nn.Linear(edge_dim-self.COLORING_RELATED_EDGE_DIM, hidden_dim),
+            activation,
             nn.Linear(hidden_dim, hidden_dim),
-            nn.GELU(),
+            activation,
             nn.Linear(hidden_dim, hidden_dim)
         )
         # Create a list of TransformerConv layers
@@ -194,9 +141,9 @@ class GraphTransformer(nn.Module):
         # Output linear layer to produce final node outputs
         self.o_lin = nn.Sequential(
             nn.Linear(hidden_dim * heads, hidden_dim * heads),
-            nn.GELU(),
+            activation,
             nn.Linear(hidden_dim * heads, hidden_dim * heads),
-            nn.GELU(),
+            activation,
             nn.Linear(hidden_dim * heads, 1),
             nn.Sigmoid()
         )
@@ -215,7 +162,8 @@ class GraphTransformer(nn.Module):
         """
         # Project the input node features to the hidden dimension multiplied by the number of heads
         x = self.i_lin(x)
-        edge_attr = self.edge_lin(edge_attr)
+        edge_emb = self.edge_lin(edge_attr[:,:-2])
+        edge_attr = torch.cat([edge_emb, edge_attr[:,-2:]], dim=-1)
         # Pass the node features through each TransformerConv layer
         for conv in self.convs:
             x = conv(x, edge_index, edge_attr=edge_attr)
@@ -226,7 +174,7 @@ class GraphTransformer(nn.Module):
         return x
 
 class GraphGenerator(nn.Module):
-    def __init__(self, node_dim=1, token_dim=5, edge_dim=1):
+    def __init__(self, node_dim=1, token_dim=5, edge_dim=1, token_enabled=True):
         """
         Initializes the GraphGenerator with specified dimensions for nodes, tokens, and edges.
 
@@ -236,6 +184,10 @@ class GraphGenerator(nn.Module):
             edge_dim (int): Dimension of the edge features.
         """
         super(GraphGenerator, self).__init__()
+        self.token_enabled = token_enabled
+        if not self.token_enabled:
+            token_dim = 0
+            
         self.graph_generator = EdgeMLP(
             in_dim_node=node_dim + token_dim,  # Combined node and token dimensions
             in_dim_edge=edge_dim,
@@ -258,11 +210,12 @@ class GraphGenerator(nn.Module):
         Returns:
             Tensor: Binary values for each edge of shape [num_edges, 1].
         """
-        # Ensure x and token have the same number of dimensions
-        if token.dim() == 1:
-            token = token.unsqueeze(-1)  # Convert to [num_nodes, 1]
-        elif token.dim() != 2:
-            raise ValueError(f"Expected token to have 1 or 2 dimensions, got {token.dim()}")
+        if self.token_enabled:
+            # Ensure x and token have the same number of dimensions
+            if token.dim() == 1:
+                token = token.unsqueeze(-1)  # Convert to [num_nodes, 1]
+            elif token.dim() != 2:
+                raise ValueError(f"Expected token to have 1 or 2 dimensions, got {token.dim()}")
 
         if x.dim() == 1:
             x = x.unsqueeze(-1)  # Convert to [num_nodes, 1]
@@ -277,7 +230,8 @@ class GraphGenerator(nn.Module):
         
         
         # Concatenate node features with token features
-        x = torch.cat([x, token], dim=-1)
+        if self.token_enabled:
+            x = torch.cat([x, token], dim=-1)
         
         # Use the EdgeMLP to generate logits for each edge
         edge_logits = self.graph_generator(x, edge_index, edge_attr)  # [num_edges, 2]
@@ -304,10 +258,11 @@ class GraphGenerator(nn.Module):
             Tensor: Output values for each node.
         """
         # Ensure x and token have the same number of dimensions
-        if token.dim() == 1:
-            token = token.unsqueeze(-1)  # Convert to [num_nodes, 1]
-        elif token.dim() != 2:
-            raise ValueError(f"Expected token to have 1 or 2 dimensions, got {token.dim()}")
+        if self.token_enabled:
+            if token.dim() == 1:
+                token = token.unsqueeze(-1)  # Convert to [num_nodes, 1]
+            elif token.dim() != 2:
+                raise ValueError(f"Expected token to have 1 or 2 dimensions, got {token.dim()}")
 
         if x.dim() == 1:
             x = x.unsqueeze(-1)  # Convert to [num_nodes, 1]
@@ -327,8 +282,9 @@ class GraphGenerator(nn.Module):
             raise ValueError(f"Expected edge_value to have 1 or 2 dimensions, got {edge_value.dim()}")
         
         # Concatenate node features with token features
-        x = torch.cat([x, token], dim=-1)
-        
+        if self.token_enabled:
+            x = torch.cat([x, token], dim=-1)
+                    
         # Combine the original edge attributes with the generated edge values
         combined_edge_attr = torch.cat([edge_attr, edge_value], dim=-1)
         

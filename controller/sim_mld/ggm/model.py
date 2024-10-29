@@ -13,11 +13,10 @@ import networkx as nx
 
 class GGM(base_model):
     def __init__(self, LR =0.001):
-        base_model.__init__(self, LR=LR, WITH_TARGET = True)
+        base_model.__init__(self, LR=LR, WITH_TARGET = False)
     
     def init_model(self):
         self.model = GraphGenerator()
-        self.model_target = GraphGenerator()
     
     def init_optim(self):
         self.eva_optim = optim.Adam(self.model.graph_evaluator.parameters(), lr=self.LR)
@@ -39,7 +38,7 @@ class GGM(base_model):
         q_target = to_tensor(batch["q"])
         nc = to_tensor(batch["nc"])
         n_sta = to_tensor(batch["n_sta"])
-        
+       
         q_approx_action = self.model.evaluate_graph(x,token,edge_value_action,edge_attr_with_color_collision,edge_index).squeeze()
         sum_edge_value_action = torch.zeros_like(q_approx_action).scatter_add_(0, edge_index[1], edge_value_action)
         loss_eva = nn.functional.binary_cross_entropy(q_approx_action, q_target, reduction="mean")
@@ -48,36 +47,34 @@ class GGM(base_model):
         self.eva_optim.step()
         self.eva_optim.zero_grad()
 
-        # self._printalltime(f"q_approx: {q_approx.mean().item():.4f}, q_target: {q_target.mean().item():.4f}")
 
         edge_value = self.model.generate_graph(x,token,edge_attr,edge_index).squeeze()
         q_approx = self.model.evaluate_graph(x,token,edge_value,edge_attr_with_color_collision,edge_index).squeeze()
         sum_edge_value = torch.zeros_like(q_approx).scatter_add_(0, edge_index[1], edge_value)
-        # loss_gen = -q_approx[q_target==0].mean() 
-        # loss_gen = nn.functional.binary_cross_entropy(edge_value,(edge_attr>0).float(), reduction="mean")
+        # loss_gen = nn.functional.mse_loss(edge_value,(edge_attr>0).float(), reduction="mean")
+
         if q_target.min() == 0:
             loss_gen = -(q_approx).mean()
         else:
             loss_gen = sum_edge_value.mean()
-        # loss_gen = -sum_edge_value[q_target==0].mean() + sum_edge_value[q_target==1].mean()
-        # self._printalltime(f"(q_target.min() == 0).float(): {(q_target.min() == 0).float()}, (q_target.min() != 0).float(): {(q_target.min() != 0).float():.4f}")
 
         self.gen_optim.zero_grad()
         loss_gen.backward()
         self.gen_optim.step()
         self.gen_optim.zero_grad()
-
-        # self._printalltime(f"edge_value: {edge_value.mean().item():.4f}, q_approx: {q_approx.mean().item():.4f}")
-        # self._printalltime(f"edge_value>0.5: {(edge_value>0.5).sum().item():.4f}, edge_value<0.5: {(edge_value<0.5).sum().item():.4f}")
-        # self._printalltime(f"(edge_attr>0).float().sum(): {(edge_attr>0).float().sum()}, (edge_attr==0).float(): {(edge_attr==0).float().sum()}")
         s = ""
-        s += f"K:{n_sta.item():>10.2f}"
-        s += f", q+:{q_target.sum():>10.2f}"
-        s += f", E:{edge_value_action.numel():>10d}"
-        s += f", e+:{edge_value_action[edge_value_action>0].sum():>10.2f}"
-        s += f", s_e|i+:{edge_value_action[edge_attr>0].sum():>10.2f}"
-        s += f", m_d|q+:{sum_edge_value_action[q_target>0].mean():>10.2f}"
-        s += f", m_d/K|q+:{sum_edge_value_action[q_target>0].mean()/n_sta.item():>10.2f}"
+        s += f"K:{q_target.sum():>4.0f}/{n_sta.item():>4.0f}:{nc.item():>3.0f}"
+        s += f", E:{edge_value_action.numel():>6d}"
+        s += f", e+:{edge_value_action[edge_value_action>0].sum():>6.0f}"
+        s += f", i+:{(edge_attr>0).sum():>6.0f}"
+        s += f", s_e|i+:{edge_value_action[edge_attr>0].sum():>6.0f}"
+        s += f", m_e:{edge_value_action.mean():>6.2f}"
+        s += f", m_d|q+:{sum_edge_value_action[q_target>0].mean():>6.2f}"
+        s += f", m_d|q0:{sum_edge_value_action[q_target==0].mean():>6.2f}"
+        s += f", m_d/K|q+:{sum_edge_value_action[q_target>0].mean()/n_sta.item():>6.2f}"
+        s += f", m_d/K|q0:{sum_edge_value_action[q_target==0].mean()/n_sta.item():>6.2f}"
+        # s += f", c(e,i):{torch.corrcoef(torch.stack([edge_value, edge_attr>0]))[0, 1].item():>4.2f}"
+        # s += f", loss_gen:{loss_gen.item():>4.2f}"
         self._printalltime(s)
 
         # self._printalltime(f"loss_eva: {loss_eva.item():.4f}, loss_gen: {loss_gen.item():.4f}")
@@ -93,7 +90,7 @@ class GGM(base_model):
         edge_value = self.model.generate_graph(x,token,edge_attr,edge_index)        
         edge_value = to_numpy(edge_value).squeeze()
         if p_true(exploration_p):
-            print("+++++")
+            print("+++++ exploration +++++")
             edge_value = GGM.binarize_vector(edge_value)
         else:
             edge_value = edge_value > 0.5
