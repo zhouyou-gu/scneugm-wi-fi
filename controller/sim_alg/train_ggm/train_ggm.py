@@ -78,7 +78,6 @@ for i in range(N_TRAINING_STEP):
     color_adj = agt.get_adj_matrix_from_edge_index(env.n_sta,agt.get_same_color_edges(act)).todense()
     color_adj = np.asarray(color_adj)
     color_collision, _ = ggm.export_all_edges(color_adj)
-    print(color_collision.shape)
     nc = np.max(act)+1
     # run ns3
     ns3sys = sim_sys(id=i)
@@ -89,7 +88,6 @@ for i in range(N_TRAINING_STEP):
     # rwd = rwd/nc*env.n_sta/1000.
     n_fail = qos_fail.sum()
 
-    print("sta count",env.n_sta,n_fail,nc)
     batch = {}
     batch["x"] = A_loss
     batch["token"] = l

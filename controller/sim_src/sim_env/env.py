@@ -76,11 +76,9 @@ class WiFiNet(InterferenceHelper):
         self._config_sta_dirs()
 
     def apply_sta_filter(self, filter):
-        n_sta = self.n_sta
         self.n_sta = filter.sum()
         self.sta_locs = self.sta_locs[filter==1]
         self.sta_dirs = self.sta_dirs[filter==1]
-        print(f"env.apply_sta_filter, original n_sta {n_sta}, n_sta {self.n_sta}, loc shape {self.sta_locs.shape}, dir shape {self.sta_dirs.shape}")
         
     def get_loss_ap_ap(self):
         ret = np.zeros((self.n_ap,self.n_ap))
