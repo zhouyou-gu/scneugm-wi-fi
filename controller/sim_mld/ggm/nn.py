@@ -183,7 +183,7 @@ class GraphTransformer(nn.Module):
         self.convs = nn.ModuleList()
         for _ in range(num_layers):
             self.convs.append(
-                TransformerConv(
+                MaskedTransformerConv(
                     in_channels=hidden_dim * heads,
                     out_channels=hidden_dim,
                     heads=heads,
