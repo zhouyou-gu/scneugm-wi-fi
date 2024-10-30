@@ -53,16 +53,13 @@ class GGM(base_model):
         sum_edge_value = torch.zeros_like(q_approx).scatter_add_(0, edge_index[1], edge_value)
         # loss_gen = nn.functional.mse_loss(edge_value,(edge_attr>0).float(), reduction="mean")
 
-        # if q_target.min() == 0:
-        #     loss_gen = -(q_approx).mean()
-        # else:
-        #     loss_gen = sum_edge_value.mean()
-        loss_gen = -(q_approx).mean()
-
+        loss_gen = -q_approx.mean() 
+ 
         self.gen_optim.zero_grad()
         loss_gen.backward()
         self.gen_optim.step()
         self.gen_optim.zero_grad()
+        
         s = ""
         s += f"K:{q_target.sum():>4.0f}/{n_sta.item():>4.0f}:{nc.item():>3.0f}"
         s += f", E:{edge_value_action.numel():>6d}"
