@@ -17,6 +17,7 @@ class GGM(base_model):
     
     def init_model(self):
         self.model = GraphGenerator()
+        self.nc_ratio = 1.
     
     def init_optim(self):
         self.eva_optim = optim.Adam(self.model.graph_evaluator.parameters(), lr=self.LR)
@@ -37,11 +38,14 @@ class GGM(base_model):
         edge_index = to_tensor(batch["edge_index"],dtype=LONG_INTEGER)
         q_target = to_tensor(batch["q"])
         nc = to_tensor(batch["nc"])
+        ub_nc = to_tensor(batch["ub_nc"])
         n_sta = to_tensor(batch["n_sta"])
+
+        c_ratio = torch.clamp(ub_nc/nc,max=1.)
        
         q_approx_action = self.model.evaluate_graph(x,token,edge_value_action,edge_attr_with_color_collision,edge_index).squeeze()
         sum_edge_value_action = torch.zeros_like(q_approx_action).scatter_add_(0, edge_index[1], edge_value_action)
-        loss_eva = nn.functional.binary_cross_entropy(q_approx_action, q_target, reduction="mean")
+        loss_eva = nn.functional.binary_cross_entropy(q_approx_action, q_target*c_ratio, reduction="mean")
         self.eva_optim.zero_grad()
         loss_eva.backward()
         self.eva_optim.step()
@@ -50,7 +54,7 @@ class GGM(base_model):
 
         edge_value = self.model.generate_graph(x,token,edge_attr,edge_index).squeeze()
         q_approx = self.model.evaluate_graph(x,token,edge_value,edge_attr_with_color_collision,edge_index).squeeze()
-        sum_edge_value = torch.zeros_like(q_approx).scatter_add_(0, edge_index[1], edge_value)
+        # sum_edge_value = torch.zeros_like(q_approx).scatter_add_(0, edge_index[1], edge_value)
         # loss_gen = nn.functional.mse_loss(edge_value,(edge_attr>0).float(), reduction="mean")
 
         loss_gen = -q_approx.mean() 
@@ -61,7 +65,7 @@ class GGM(base_model):
         self.gen_optim.zero_grad()
         
         s = ""
-        s += f"K:{q_target.sum():>4.0f}/{n_sta.item():>4.0f}:{nc.item():>3.0f}"
+        s += f"K:{q_target.sum():>4.0f}/{n_sta.item():>4.0f}:{nc.item():>3.0f}>{ub_nc.item():>3.0f}"
         s += f", E:{edge_value_action.numel():>6d}"
         s += f", e+:{edge_value_action[edge_value_action>0].sum():>6.0f}"
         s += f", i+:{(edge_attr>0).sum():>6.0f}"

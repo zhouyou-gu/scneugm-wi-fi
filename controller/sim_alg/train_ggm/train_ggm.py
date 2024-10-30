@@ -70,6 +70,8 @@ def run_test():
     act = agt.greedy_coloring(csr_matrix(adj))
     agt.set_action(act) # place all stas in one slot
     
+    ub_act = agt.greedy_coloring(csr_matrix(env.get_CH_matrix()))
+    ub_nc = np.max(ub_act)+1
     color_adj = agt.get_adj_matrix_from_edge_index(env.n_sta,agt.get_same_color_edges(act)).todense()
     color_adj = np.asarray(color_adj)
     color_collision, _ = ggm.export_all_edges(color_adj)
@@ -91,6 +93,7 @@ def run_test():
     batch["edge_index"] = edge_index
     batch["q"] = rwd
     batch["nc"] = nc
+    batch["ub_nc"] = ub_nc
     batch["n_sta"] = env.n_sta
     ggm.step(batch)
 
