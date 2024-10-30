@@ -220,7 +220,7 @@ class GCNEvaluator(nn.Module):
         if edge_attr is not None:
             if edge_attr.size(1) < 3:
                 raise ValueError("edge_attr must have at least 3 features for masking.")
-            mask = edge_attr[:, -2] * (1-edge_attr[:, -1])
+            mask = (1-edge_attr[:, -1])
             edge_attr_main = edge_attr[:, :-2]
             edge_weight = self.edge_weight_lin(edge_attr_main).squeeze(-1)  # <-- Transform edge_attr to scalar weights
             edge_weight = edge_weight.sigmoid()*mask
