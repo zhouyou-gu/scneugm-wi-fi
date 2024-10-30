@@ -177,7 +177,7 @@ class GraphTransformer(nn.Module):
 
 class GCNEvaluator(nn.Module):
     
-    def __init__(self, input_dim, edge_dim, hidden_dim=10, num_layers=5, output_dim=1, activation=nn.ReLU()):
+    def __init__(self, input_dim, edge_dim, hidden_dim=10, num_layers=5, output_dim=2, activation=nn.ReLU()):
         """
         Initializes the GCNEvaluator model using GCN layers with edge attributes.
 
@@ -201,9 +201,7 @@ class GCNEvaluator(nn.Module):
             self.convs.append(activation)
             self.convs.append(GCNConv(hidden_dim, hidden_dim,add_self_loops=True,normalize=True))
 
-        self.convs.append(nn.Linear(hidden_dim, 1))
-        self.convs.append(nn.Sigmoid())
-        print(self.convs)
+        self.convs.append(nn.Linear(hidden_dim, output_dim))
     
     def forward(self, x, edge_index, edge_attr=None):
         """
@@ -259,7 +257,7 @@ class GraphGenerator(nn.Module):
             edge_dim=edge_dim + COLORING_RELATED_EDGE_DIM,  # Including the generated edge value and color collision
             hidden_dim=10,
             num_layers=1,
-            output_dim=1,
+            output_dim=2,
             activation=nn.ReLU()
         )
   
@@ -354,6 +352,11 @@ class GraphGenerator(nn.Module):
         combined_edge_attr = torch.cat([edge_attr, edge_value], dim=-1)
         
         # Use the GraphTransformer to compute node outputs with the combined edge attributes
-        node_outputs = self.graph_evaluator(x, edge_index, combined_edge_attr)
+        node_logits = self.graph_evaluator(x, edge_index, combined_edge_attr)
         
-        return node_outputs
+        # Apply Gumbel-Softmax to obtain differentiable binary node values
+        node_values = F.gumbel_softmax(node_logits, tau=1.0)  # [num_nodes, 2]
+
+        binary_node_values = node_values[:, 1].unsqueeze(-1) 
+        
+        return binary_node_values

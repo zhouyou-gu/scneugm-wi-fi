@@ -54,7 +54,7 @@ class GGM(base_model):
         # loss_gen = nn.functional.mse_loss(edge_value,(edge_attr>0).float(), reduction="mean")
 
         loss_gen = -q_approx.mean() 
- 
+        
         self.gen_optim.zero_grad()
         loss_gen.backward()
         self.gen_optim.step()
@@ -71,6 +71,8 @@ class GGM(base_model):
         s += f", m_d|q0:{sum_edge_value_action[q_target==0].mean():>6.2f}"
         s += f", m_d/K|q+:{sum_edge_value_action[q_target>0].mean()/n_sta.item():>6.2f}"
         s += f", m_d/K|q0:{sum_edge_value_action[q_target==0].mean()/n_sta.item():>6.2f}"
+        s += f", q~:{q_approx.mean():>6.2f}"
+        s += f", ql:{loss_eva.item():>6.2f}"
         # s += f", c(e,i):{torch.corrcoef(torch.stack([edge_value, edge_attr>0]))[0, 1].item():>4.2f}"
         # s += f", loss_gen:{loss_gen.item():>4.2f}"
         self._printalltime(s)
