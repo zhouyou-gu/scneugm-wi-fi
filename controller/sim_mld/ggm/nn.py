@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn.conv.transformer_conv import *
+from torch_geometric.nn import GCNConv
+
+COLORING_RELATED_EDGE_DIM =2
 
 class EdgeMLP(nn.Module):
     def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=30, num_hidden_layers=3, out_dim=1, activation=nn.ReLU(), output_activation=None):
@@ -76,7 +79,7 @@ class MaskedTransformerConv(TransformerConv):
             key_j = key_j + edge_attr
 
         alpha = (query_i * key_j).sum(dim=-1) / math.sqrt(self.out_channels)
-        alpha = torch.sigmoid(alpha)
+        # alpha = torch.sigmoid(alpha)
 
         # alpha = softmax(alpha, index, ptr, size_i)
         if mask is not None:
@@ -96,7 +99,6 @@ class MaskedTransformerConv(TransformerConv):
         return out
 
 class GraphTransformer(nn.Module):
-    COLORING_RELATED_EDGE_DIM =2
     def __init__(self, input_dim=6, hidden_dim=10, heads=5, num_layers=3, edge_dim=1, activation=nn.ReLU(),):
         """
         Initializes the GraphTransformer model.
@@ -109,7 +111,7 @@ class GraphTransformer(nn.Module):
             edge_dim (int): Dimension of the edge features.
         """
         super(GraphTransformer, self).__init__()
-        assert edge_dim>self.COLORING_RELATED_EDGE_DIM, "edge_dim needs >= 3"
+        assert edge_dim>COLORING_RELATED_EDGE_DIM, "edge_dim needs >= 3"
 
         # Initial linear layer to project node features to hidden_dim * heads
         self.i_lin = nn.Sequential(
@@ -120,7 +122,7 @@ class GraphTransformer(nn.Module):
             nn.Linear(hidden_dim * heads, hidden_dim * heads)
         )
         self.edge_lin = nn.Sequential(
-            nn.Linear(edge_dim-self.COLORING_RELATED_EDGE_DIM, hidden_dim),
+            nn.Linear(edge_dim-COLORING_RELATED_EDGE_DIM, hidden_dim),
             activation,
             nn.Linear(hidden_dim, hidden_dim),
             activation,
@@ -173,6 +175,65 @@ class GraphTransformer(nn.Module):
 
         return x
 
+class GCNEvaluator(nn.Module):
+    
+    def __init__(self, input_dim, edge_dim, hidden_dim=10, num_layers=5, output_dim=1, activation=nn.ReLU()):
+        """
+        Initializes the GCNEvaluator model using GCN layers with edge attributes.
+
+        Args:
+            input_dim (int): Dimension of the input node features.
+            edge_dim (int): Dimension of the edge features.
+            hidden_dim (int): Dimension of the hidden layers.
+            num_layers (int): Number of GCN layers.
+            output_dim (int): Dimension of the output layer.
+            activation (nn.Module): Activation function.
+        """
+        super(GCNEvaluator, self).__init__()
+        assert edge_dim>COLORING_RELATED_EDGE_DIM, "edge_dim needs >= 3"
+
+        self.edge_weight_lin = nn.Linear(edge_dim-COLORING_RELATED_EDGE_DIM, 1)  # <-- New layer to transform edge_attr to edge_weight
+
+        self.convs = nn.ModuleList()
+        self.convs.append(GCNConv(input_dim, hidden_dim,add_self_loops=True,normalize=True))
+
+        for _ in range(num_layers - 1):
+            self.convs.append(activation)
+            self.convs.append(GCNConv(hidden_dim, hidden_dim,add_self_loops=True,normalize=True))
+
+        self.convs.append(nn.Linear(hidden_dim, 1))
+        self.convs.append(nn.Sigmoid())
+        print(self.convs)
+    
+    def forward(self, x, edge_index, edge_attr=None):
+        """
+        Forward pass for GCNEvaluator.
+
+        Args:
+            x (Tensor): Node feature matrix of shape [num_nodes, input_dim].
+            edge_index (Tensor): Edge indices of shape [2, num_edges].
+            edge_attr (Tensor, optional): Edge feature matrix of shape [num_edges, edge_dim].
+
+        Returns:
+            Tensor: Output tensor for each node of shape [num_nodes, output_dim].
+        """
+        if edge_attr is not None:
+            if edge_attr.size(1) < 3:
+                raise ValueError("edge_attr must have at least 3 features for masking.")
+            mask = edge_attr[:, -2] * (1-edge_attr[:, -1])
+            edge_attr_main = edge_attr[:, :-2]
+            edge_weight = self.edge_weight_lin(edge_attr_main).squeeze(-1)  # <-- Transform edge_attr to scalar weights
+            edge_weight = edge_weight.sigmoid()*mask
+        else:
+            edge_weight = None
+
+        for layer in self.convs:
+            if isinstance(layer, GCNConv):
+                x = layer(x, edge_index, edge_weight=edge_weight)  # <-- Pass edge_weight to GCNConv
+            else:
+                x = layer(x)
+        return x
+
 class GraphGenerator(nn.Module):
     def __init__(self, node_dim=1, token_dim=5, edge_dim=1, token_enabled=True):
         """
@@ -193,9 +254,13 @@ class GraphGenerator(nn.Module):
             in_dim_edge=edge_dim,
             out_dim=2
         )
-        self.graph_evaluator = GraphTransformer(
+        self.graph_evaluator = GCNEvaluator(
             input_dim=node_dim + token_dim,
-            edge_dim=edge_dim + 2  # Including the generated edge value and color collision
+            edge_dim=edge_dim + COLORING_RELATED_EDGE_DIM,  # Including the generated edge value and color collision
+            hidden_dim=10,
+            num_layers=1,
+            output_dim=1,
+            activation=nn.ReLU()
         )
   
     def generate_graph(self, x, token, edge_attr, edge_index):
