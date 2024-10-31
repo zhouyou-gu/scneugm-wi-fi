@@ -219,55 +219,85 @@ class LSH:
         return results
     
     @staticmethod
-    def query_rows(binary_matrix, n=5, max_attempts=1000, minimum_matching = 2):
+    def query_rows(binary_matrix, n=3, max_attempts=1000, target_matching=20):
         """
-        Repeatedly queries the binary matrix to find row indices where the row matches
-        a randomly generated n-dimensional binary vector in n randomly selected positions.
-        Continues until at least one matching row is found or until max_attempts is reached.
-        
+        Repeatedly queries the binary matrix by selecting random column positions and binary vectors
+        until a target number of unique matching rows is found. If an attempt yields more matches
+        than needed, a subset is randomly selected to meet the target.
+
         Parameters:
         - binary_matrix (np.ndarray): The binary matrix of shape (K, M).
-        - n (int): Number of positions to consider for matching.
-        - max_attempts (int): Maximum number of attempts to find a non-empty query.
-        - seed (int, optional): Seed for reproducibility.
-        
+        - n (int): The number of column positions to select in each attempt.
+        - max_attempts (int): Maximum number of attempts to find matching rows.
+        - target_matching (int): The exact number of unique matching rows desired.
+
         Returns:
-        - selected_positions (np.ndarray): Array of selected column indices.
-        - binary_vector (np.ndarray): The randomly generated binary vector of length n.
-        - matching_row_indices (np.ndarray): Array of row indices that match the criteria.
-        - attempts (int): Number of attempts made.
-        
+        - matching_row_indices (np.ndarray): Array of matching row indices with length `target_matching`.
+        - match_mask (np.ndarray): Boolean array of shape (K,) where True indicates a matching row.
+
         Raises:
-        - ValueError: If no matching rows are found within max_attempts.
+        - ValueError: If the target number of matching rows cannot be found within `max_attempts`.
         """
         K, M = binary_matrix.shape
+
+        # Input validations
         if n > M:
             raise ValueError("n cannot be greater than the number of columns M.")
-        
+        if target_matching < 1:
+            raise ValueError("target_matching must be at least 1.")
+        if target_matching > K:
+            raise ValueError("target_matching cannot exceed the number of rows K in the matrix.")
+
+        accumulated_matching_rows = set()
         attempts = 0
-        while attempts < max_attempts:
+
+        while attempts < max_attempts and len(accumulated_matching_rows) < target_matching:
             attempts += 1
             # Step 1: Randomly select n unique column indices
             selected_positions = np.random.choice(M, size=n, replace=False)
-            
+
             # Step 2: Generate a random binary vector of length n
             binary_vector = np.random.randint(0, 2, size=n)
-            
+
             # Step 3: Extract the submatrix corresponding to the selected positions
             submatrix = binary_matrix[:, selected_positions]
-            
+
             # Step 4: Create a boolean mask where rows match the binary vector
             match_mask = np.all(submatrix == binary_vector, axis=1)
-            
+
             # Step 5: Get the indices of rows where match_mask is True
             matching_row_indices = np.where(match_mask)[0]
-            
-            if matching_row_indices.size >= minimum_matching:
-                # Found at least two matching row
-                return matching_row_indices, match_mask
-        
-        # If no matching rows found after max_attempts
-        raise ValueError(f"No matching rows found after {max_attempts} attempts.")
+
+            # Step 6: Identify new matching rows not yet accumulated
+            new_matching_rows = [row for row in matching_row_indices if row not in accumulated_matching_rows]
+
+            # If new matching rows are found, add them to the accumulated set
+            if new_matching_rows:
+                for row in new_matching_rows:
+                    if len(accumulated_matching_rows) < target_matching:
+                        accumulated_matching_rows.add(row)
+                    if len(accumulated_matching_rows) == target_matching:
+                        break  # Target achieved
+
+        # After all attempts, check if the target was achieved
+        if len(accumulated_matching_rows) < target_matching:
+            raise ValueError(f"Could not find {target_matching} matching rows within {max_attempts} attempts.")
+
+        # Convert the accumulated set to a sorted list for consistency
+        accumulated_matching_rows = sorted(accumulated_matching_rows)
+
+        # If more rows are accumulated than needed (due to simultaneous additions), randomly select the required number
+        if len(accumulated_matching_rows) > target_matching:
+            selected_indices = np.random.choice(len(accumulated_matching_rows), size=target_matching, replace=False)
+            final_matching_rows = np.array([accumulated_matching_rows[i] for i in selected_indices])
+        else:
+            final_matching_rows = np.array(accumulated_matching_rows)
+
+        # Create the match mask with exactly target_matching True values
+        match_mask = np.zeros(K, dtype=bool)
+        match_mask[final_matching_rows] = True
+
+        return final_matching_rows, match_mask
 
 
 

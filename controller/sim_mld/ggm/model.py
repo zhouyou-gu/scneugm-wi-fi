@@ -20,7 +20,7 @@ class GGM(base_model):
         self.nc_ratio = 1.
     
     def init_optim(self):
-        self.eva_optim = optim.Adam(self.model.graph_evaluator.parameters(), lr=self.LR)
+        self.eva_optim = optim.Adam(list(self.model.graph_evaluator_t.parameters()) + list(self.model.graph_evaluator_c.parameters()), lr=self.LR*10)
         self.gen_optim = optim.Adam(self.model.graph_generator.parameters(), lr=self.LR)
         
     @counted
@@ -32,7 +32,10 @@ class GGM(base_model):
         x = to_tensor(batch["x"])
         token = to_tensor(batch["token"])
         edge_value_action = to_tensor(batch["edge_value"])
+        edge_value_T_action = to_tensor(batch["edge_value_T"])
+        edge_value_action = torch.logical_or(edge_value_action.bool(), edge_value_T_action.bool()).float()
         edge_attr = to_tensor(batch["edge_attr"])
+        edge_attr_T = to_tensor(batch["edge_attr_T"])
         color_collision = to_tensor(batch["color_collision"])
         edge_attr_with_color_collision = torch.cat([edge_attr.unsqueeze(-1),color_collision.unsqueeze(-1)],dim=-1)
         edge_index = to_tensor(batch["edge_index"],dtype=LONG_INTEGER)
@@ -43,21 +46,27 @@ class GGM(base_model):
 
         c_ratio = torch.clamp(ub_nc/nc,max=1.)
        
-        q_approx_action = self.model.evaluate_graph(x,token,edge_value_action,edge_attr_with_color_collision,edge_index).squeeze()
-        sum_edge_value_action = torch.zeros_like(q_approx_action).scatter_add_(0, edge_index[1], edge_value_action)
-        loss_eva = nn.functional.binary_cross_entropy(q_approx_action, q_target*c_ratio, reduction="mean")
+        q_approx_action_t, q_approx_action_c = self.model.evaluate_graph(x,token,edge_value_action,edge_attr_with_color_collision,edge_index)
+        q_approx_action_t = q_approx_action_t.squeeze()
+        q_approx_action_c = q_approx_action_c.squeeze()
+        sum_edge_value_action = torch.zeros_like(q_approx_action_t).scatter_add_(0, edge_index[1], edge_value_action)
+        c_ratio_target = torch.zeros_like(q_approx_action_c) + c_ratio
+        loss_eva = nn.functional.binary_cross_entropy(q_approx_action_t, q_target, reduction="mean")
+        loss_eva += nn.functional.binary_cross_entropy(q_approx_action_c, c_ratio_target, reduction="mean")
         self.eva_optim.zero_grad()
         loss_eva.backward()
         self.eva_optim.step()
         self.eva_optim.zero_grad()
 
 
-        edge_value = self.model.generate_graph(x,token,edge_attr,edge_index).squeeze()
-        q_approx = self.model.evaluate_graph(x,token,edge_value,edge_attr_with_color_collision,edge_index).squeeze()
+        edge_value = self.model.generate_graph(x,token,edge_attr,edge_index,edge_attr_T).squeeze()
+        q_approx, q_approx_c = self.model.evaluate_graph(x,token,edge_value,edge_attr_with_color_collision,edge_index)
+        q_approx = q_approx.squeeze()
+        q_approx_c = q_approx_c.squeeze()
         # sum_edge_value = torch.zeros_like(q_approx).scatter_add_(0, edge_index[1], edge_value)
         # loss_gen = nn.functional.mse_loss(edge_value,(edge_attr>0).float(), reduction="mean")
 
-        loss_gen = -q_approx.mean() 
+        loss_gen = -(q_approx * q_approx_c).mean() 
         
         self.gen_optim.zero_grad()
         loss_gen.backward()
@@ -85,13 +94,14 @@ class GGM(base_model):
         self._add_np_log("loss",self.N_STEP,loss_eva.item(),loss_gen.item())
 
     @torch.no_grad()
-    def get_output_np_edge_weight(self, x, token, edge_attr, edge_index, exploration_p = 0.):
+    def get_output_np_edge_weight(self, x, token, edge_attr, edge_index, edge_attr_T, exploration_p = 0.):
         x = to_tensor(x)
         token = to_tensor(token)
         edge_attr = to_tensor(edge_attr)
         edge_index = to_tensor(edge_index,dtype=LONG_INTEGER)
+        edge_attr_T = to_tensor(edge_attr_T)
         
-        edge_value = self.model.generate_graph(x,token,edge_attr,edge_index)        
+        edge_value = self.model.generate_graph(x,token,edge_attr,edge_index, edge_attr_T)        
         edge_value = to_numpy(edge_value).squeeze()
         if p_true(exploration_p):
             print("+++++ exploration +++++")

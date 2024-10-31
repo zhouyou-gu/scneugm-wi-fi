@@ -51,7 +51,7 @@ def run_test():
     hc = sp_model.get_output_np(l)
     hc = sp_model.binarize_hard_code(hc)
     
-    _, mask = LSH.query_rows(hc)
+    _, mask = LSH.query_rows(hc,target_matching=5)
 
 
     env.apply_sta_filter(mask)
@@ -62,9 +62,11 @@ def run_test():
     
     S_loss, A_loss = env.get_sta_to_associated_ap_loss()
     edge_attr, edge_index = ggm.export_all_edges(S_loss)
-    edge_value = ggm.get_output_np_edge_weight(A_loss,l,edge_attr,edge_index)
+    edge_attr_T, _ = ggm.export_all_edges(S_loss.T)
+    edge_value = ggm.get_output_np_edge_weight(A_loss,l,edge_attr,edge_index, edge_attr_T)
     adj = ggm.construct_adjacency_matrix(edge_index,edge_value,env.n_sta)
-    
+    edge_value_T = adj[edge_index[1],edge_index[0]]
+    print(edge_index)
     agt = agt_for_training()
     agt.set_env(env)
     act = agt.greedy_coloring(csr_matrix(adj))
@@ -88,7 +90,9 @@ def run_test():
     batch["x"] = A_loss
     batch["token"] = l
     batch["edge_value"] = edge_value
+    batch["edge_value_T"] = edge_value_T
     batch["edge_attr"] = edge_attr
+    batch["edge_attr_T"] = edge_attr_T
     batch["color_collision"] = color_collision
     batch["edge_index"] = edge_index
     batch["q"] = rwd

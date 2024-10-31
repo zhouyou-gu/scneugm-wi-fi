@@ -2,13 +2,56 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn.conv.transformer_conv import *
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, SimpleConv, MessagePassing, TransformerConv
+from torch_geometric.utils import add_self_loops
 
 COLORING_RELATED_EDGE_DIM =2
+HIDDEN_DIM_MULTIPLIER = 5
+
+class MessagePassingNNWithEdge(MessagePassing):
+    def __init__(self, in_channels, out_channels, edge_dim=1, hidden_channels=10):
+        super(MessagePassingNNWithEdge, self).__init__(aggr='add')
+        
+        # MLP that takes node features and edge attributes
+        self.mlp = nn.Sequential(
+            nn.Linear(2 * in_channels + edge_dim, hidden_channels),
+            nn.ReLU(),
+            nn.Linear(hidden_channels, out_channels)
+        )
+        
+        self.update_mlp = nn.Sequential(
+            nn.Linear(out_channels, out_channels),
+            nn.ReLU(),
+            nn.Linear(out_channels, out_channels)
+        )
+    
+    def forward(self, x, edge_index, edge_attr):
+        # Add self-loops to the adjacency matrix
+        # edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+        
+        # Create self-loop edge attributes (e.g., zeros)
+        # num_new_edges = x.size(0)  # One self-loop per node
+        # self_loop_attr = torch.zeros((num_new_edges, edge_attr.size(1)), device=edge_attr.device)
+        
+        # # Concatenate original edge attributes with self-loop attributes
+        # edge_attr = torch.cat([edge_attr, self_loop_attr], dim=0)
+        
+        return self.propagate(edge_index, x=x, edge_attr=edge_attr)
+    
+    def message(self, x_i, x_j, edge_attr):
+        # Concatenate target node, source node, and edge attributes
+        combined = torch.cat([x_i, x_j, edge_attr], dim=1)
+        messages = self.mlp(combined)
+        return messages
+    
+    def update(self, aggr_out):
+        updated = self.update_mlp(aggr_out)
+        return updated
 
 class EdgeMLP(nn.Module):
-    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=30, num_hidden_layers=3, out_dim=1, activation=nn.ReLU(), output_activation=None):
+    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=30, num_hidden_layers=3, out_dim=2, activation=nn.ReLU(), output_activation=None, symmetric=True):
         super(EdgeMLP, self).__init__()
+        self.symmetric = symmetric
         layers = []
 
         # Input layer takes concatenated node and edge features
@@ -27,7 +70,7 @@ class EdgeMLP(nn.Module):
 
         self.mlp = nn.Sequential(*layers)
 
-    def forward(self, x, edge_index, edge_attr):
+    def forward(self, x, edge_index, edge_attr, edge_attr_T = None):
         """
         Forward pass for EdgeMLP.
 
@@ -44,6 +87,15 @@ class EdgeMLP(nn.Module):
             edge_attr = edge_attr.unsqueeze(-1)  # Convert to [num_edges, 1]
         elif edge_attr.dim() != 2:
             raise ValueError(f"Expected edge_attr to have 1 or 2 dimensions, got {edge_attr.dim()}")
+        
+        if self.symmetric:
+            assert edge_attr_T is not None, "symmetric mode need the edge_attr_T"
+            # Ensure edge_attr_sym is 2D
+            if edge_attr_T.dim() == 1:
+                edge_attr_T = edge_attr_T.unsqueeze(-1)  # Convert to [num_edges, 1]
+            elif edge_attr_T.dim() != 2:
+                raise ValueError(f"Expected edge_attr_T to have 1 or 2 dimensions, got {edge_attr_T.dim()}")
+            assert edge_attr_T.shape == edge_attr.shape, "edge_attr_T needs to be in the same shape as edge_attr"
 
         # Extract source and target node indices
         src_nodes = edge_index[0]
@@ -59,6 +111,11 @@ class EdgeMLP(nn.Module):
         # Pass the concatenated features through the MLP to get edge outputs
         out = self.mlp(edge_features)  # [num_edges, out_dim]
 
+        if self.symmetric:
+            edge_features = torch.cat([x_tgt, x_src, edge_attr_T], dim=-1)  # [num_edges, 2 * (in_dim_node + token_dim) + in_dim_edge]
+            out += self.mlp(edge_features)  # [num_edges, out_dim]
+            out = out/2.
+            
         return out
 
 
@@ -99,7 +156,7 @@ class MaskedTransformerConv(TransformerConv):
         return out
 
 class GraphTransformer(nn.Module):
-    def __init__(self, input_dim=6, hidden_dim=10, heads=5, num_layers=3, edge_dim=1, activation=nn.ReLU(),):
+    def __init__(self, input_dim, edge_dim, num_layers, output_dim=2, hidden_dim=10, heads = 5, activation=nn.ReLU()):
         """
         Initializes the GraphTransformer model.
 
@@ -122,7 +179,7 @@ class GraphTransformer(nn.Module):
             nn.Linear(hidden_dim * heads, hidden_dim * heads)
         )
         self.edge_lin = nn.Sequential(
-            nn.Linear(edge_dim-COLORING_RELATED_EDGE_DIM, hidden_dim),
+            nn.Linear(edge_dim, hidden_dim),
             activation,
             nn.Linear(hidden_dim, hidden_dim),
             activation,
@@ -132,7 +189,7 @@ class GraphTransformer(nn.Module):
         self.convs = nn.ModuleList()
         for _ in range(num_layers):
             self.convs.append(
-                MaskedTransformerConv(
+                TransformerConv(
                     in_channels=hidden_dim * heads,
                     out_channels=hidden_dim,
                     heads=heads,
@@ -146,8 +203,7 @@ class GraphTransformer(nn.Module):
             activation,
             nn.Linear(hidden_dim * heads, hidden_dim * heads),
             activation,
-            nn.Linear(hidden_dim * heads, 1),
-            nn.Sigmoid()
+            nn.Linear(hidden_dim * heads, output_dim),
         )
 
     def forward(self, x, edge_index, edge_attr):
@@ -164,11 +220,11 @@ class GraphTransformer(nn.Module):
         """
         # Project the input node features to the hidden dimension multiplied by the number of heads
         x = self.i_lin(x)
-        edge_emb = self.edge_lin(edge_attr[:,:-2])
-        edge_attr = torch.cat([edge_emb, edge_attr[:,-2:]], dim=-1)
+        edge_emb = self.edge_lin(edge_attr)
+        # edge_attr = torch.cat([edge_emb, edge_attr[:,-2:]], dim=-1)
         # Pass the node features through each TransformerConv layer
         for conv in self.convs:
-            x = conv(x, edge_index, edge_attr=edge_attr)
+            x = conv(x, edge_index, edge_attr=edge_emb)
         
         # Apply the output linear layer and sigmoid activation to obtain final node outputs
         x = self.o_lin(x)
@@ -177,7 +233,7 @@ class GraphTransformer(nn.Module):
 
 class GCNEvaluator(nn.Module):
     
-    def __init__(self, input_dim, edge_dim, hidden_dim=10, num_layers=5, output_dim=2, activation=nn.ReLU()):
+    def __init__(self, input_dim, edge_dim, num_layers, output_dim=2, hidden_dim=10, activation=nn.ReLU()):
         """
         Initializes the GCNEvaluator model using GCN layers with edge attributes.
 
@@ -192,17 +248,41 @@ class GCNEvaluator(nn.Module):
         super(GCNEvaluator, self).__init__()
         assert edge_dim>COLORING_RELATED_EDGE_DIM, "edge_dim needs >= 3"
 
-        self.edge_weight_lin = nn.Linear(edge_dim-COLORING_RELATED_EDGE_DIM, 1)  # <-- New layer to transform edge_attr to edge_weight
-
+        self.edge_weight_lin = nn.Sequential(
+            nn.Linear(edge_dim, hidden_dim*HIDDEN_DIM_MULTIPLIER),
+            activation,
+            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim*HIDDEN_DIM_MULTIPLIER),
+            activation,
+            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim),
+            activation,
+        )
+        self.i_lin = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim*HIDDEN_DIM_MULTIPLIER),
+            activation,
+            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim*HIDDEN_DIM_MULTIPLIER),
+            activation,
+            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim),
+        )
         self.convs = nn.ModuleList()
-        self.convs.append(GCNConv(input_dim, hidden_dim,add_self_loops=True,normalize=True))
-
-        for _ in range(num_layers - 1):
+        for _ in range(num_layers):
             self.convs.append(activation)
-            self.convs.append(GCNConv(hidden_dim, hidden_dim,add_self_loops=True,normalize=True))
+            tmp = nn.ModuleList()
+            for _ in range(hidden_dim):
+                # tmp.append(GCNConv(hidden_dim, hidden_dim,add_self_loops=True,normalize=True))
+                # tmp.append(TransformerConv(in_channels=hidden_dim,out_channels=hidden_dim,edge_dim=1))
+                tmp.append(MessagePassingNNWithEdge(in_channels=hidden_dim,out_channels=hidden_dim,edge_dim=1))
+                # tmp.append(SimpleConv())
+            self.convs.append(tmp)
+            self.convs.append(nn.Linear(hidden_dim*hidden_dim, hidden_dim))
 
-        self.convs.append(nn.Linear(hidden_dim, output_dim))
-    
+        self.convs.append(activation)
+        self.o_lin = nn.Sequential(
+            nn.Linear(hidden_dim+hidden_dim, hidden_dim*HIDDEN_DIM_MULTIPLIER),
+            activation,
+            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim*HIDDEN_DIM_MULTIPLIER),
+            activation,
+            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, output_dim),
+        )
     def forward(self, x, edge_index, edge_attr=None):
         """
         Forward pass for GCNEvaluator.
@@ -218,19 +298,32 @@ class GCNEvaluator(nn.Module):
         if edge_attr is not None:
             if edge_attr.size(1) < 3:
                 raise ValueError("edge_attr must have at least 3 features for masking.")
-            mask = edge_attr[:, -2] * (1-edge_attr[:, -1])
-            edge_attr_main = edge_attr[:, :-2]
-            edge_weight = self.edge_weight_lin(edge_attr_main).squeeze(-1)  # <-- Transform edge_attr to scalar weights
-            edge_weight = edge_weight.sigmoid()*mask
+            # mask = edge_attr[:, -2] * (1-edge_attr[:, -1])
+            # edge_attr_main = edge_attr[:, :-2]
+            edge_weight = self.edge_weight_lin(edge_attr).squeeze(-1)  # <-- Transform edge_attr to scalar weights
+            # edge_weight = edge_weight.sigmoid()*mask
         else:
             edge_weight = None
+        print(edge_attr,"edge_attr")
+        print(edge_weight,"edge_weight")
 
+        x_ = self.i_lin(x)
+        x_ = torch.zeros_like(x_)
+        x = torch.zeros_like(x_)
+        print(x,"self.i_lin")
+        x = x_
         for layer in self.convs:
-            if isinstance(layer, GCNConv):
-                x = layer(x, edge_index, edge_weight=edge_weight)  # <-- Pass edge_weight to GCNConv
+            if isinstance(layer, nn.ModuleList):
+                x = torch.cat([e(x, edge_index, edge_weight[:,i].unsqueeze(-1)) for i, e in enumerate(layer)], dim=1)
             else:
                 x = layer(x)
-        return x
+            print(x,layer.__class__.__name__)
+        x = self.o_lin(torch.cat([x_,x],dim=1))
+        print(x,"self.o_lin")
+        # Apply Gumbel-Softmax to obtain differentiable binary node values
+        x = F.softmax(x)  # [num_nodes, 2]
+        print(x,"softmax")
+        return x[:, 1].unsqueeze(-1)
 
 class GraphGenerator(nn.Module):
     def __init__(self, node_dim=1, token_dim=5, edge_dim=1, token_enabled=True):
@@ -252,16 +345,17 @@ class GraphGenerator(nn.Module):
             in_dim_edge=edge_dim,
             out_dim=2
         )
-        self.graph_evaluator = GCNEvaluator(
+        self.graph_evaluator_t = GCNEvaluator(
             input_dim=node_dim + token_dim,
             edge_dim=edge_dim + COLORING_RELATED_EDGE_DIM,  # Including the generated edge value and color collision
-            hidden_dim=10,
-            num_layers=1,
-            output_dim=2,
-            activation=nn.ReLU()
+            num_layers=10
         )
-  
-    def generate_graph(self, x, token, edge_attr, edge_index):
+        self.graph_evaluator_c = GCNEvaluator(
+            input_dim=node_dim + token_dim,
+            edge_dim=edge_dim + COLORING_RELATED_EDGE_DIM,  # Including the generated edge value and color collision
+            num_layers=10
+        )
+    def generate_graph(self, x, token, edge_attr, edge_index, edge_attr_T = None):
         """
         Generates a binary value for each edge based on node and edge features.
 
@@ -297,7 +391,7 @@ class GraphGenerator(nn.Module):
             x = torch.cat([x, token], dim=-1)
         
         # Use the EdgeMLP to generate logits for each edge
-        edge_logits = self.graph_generator(x, edge_index, edge_attr)  # [num_edges, 2]
+        edge_logits = self.graph_generator(x, edge_index, edge_attr, edge_attr_T)  # [num_edges, 2]
 
         # Apply Gumbel-Softmax to obtain differentiable binary edge values
         edge_values = F.gumbel_softmax(edge_logits, tau=1.0, hard=True)  # [num_edges, 2]
@@ -352,11 +446,4 @@ class GraphGenerator(nn.Module):
         combined_edge_attr = torch.cat([edge_attr, edge_value], dim=-1)
         
         # Use the GraphTransformer to compute node outputs with the combined edge attributes
-        node_logits = self.graph_evaluator(x, edge_index, combined_edge_attr)
-        
-        # Apply Gumbel-Softmax to obtain differentiable binary node values
-        node_values = F.gumbel_softmax(node_logits, tau=1.0)  # [num_nodes, 2]
-
-        binary_node_values = node_values[:, 1].unsqueeze(-1) 
-        
-        return binary_node_values
+        return self.graph_evaluator_t(x, edge_index, combined_edge_attr), self.graph_evaluator_c(x, edge_index, combined_edge_attr)
