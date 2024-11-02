@@ -9,7 +9,7 @@ HIDDEN_DIM_MULTIPLIER = 5
 
 # do not use softmax to output the binary in es
 class EdgeMLP(nn.Module):
-    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=100, num_hidden_layers=1, out_dim=1, activation=nn.ReLU(), output_activation=nn.Sigmoid(), symmetric=True):
+    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=100, num_hidden_layers=2, out_dim=1, activation=nn.ReLU(), output_activation=nn.Sigmoid(), symmetric=True):
         super(EdgeMLP, self).__init__()
         self.symmetric = symmetric
         layers = []
@@ -73,13 +73,12 @@ class EdgeMLP(nn.Module):
         
         if self.symmetric:
             edge_features = torch.cat([x_tgt, x_src, edge_attr_T], dim=-1)  # [num_edges, 2 * (in_dim_node + token_dim) + in_dim_edge]
-            out += self.mlp(edge_features)  # [num_edges, out_dim]
+            out = out + self.mlp(edge_features)  # [num_edges, out_dim]
             out = out/2.
-
-        # out = F.softmax(out,dim=1)  # [num_nodes, out_dim]
-
-        # out = out[:,-1].unsqueeze(-1)
+            
+        print(out[:5,:].flatten())
         return out
+
 
 def _flt_param(model):
     return parameters_to_vector(model.parameters())

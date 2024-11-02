@@ -9,6 +9,7 @@ from sim_mld.pg_ggm.nn import GraphGenerator
 from torch_geometric.utils import to_undirected
 from torch_geometric.data import Data, Batch
 from torch import optim
+torch.autograd.set_detect_anomaly(True)
 
 class PG_GGM(base_model):
     def __init__(self, LR =0.001, deterministic=True):
@@ -44,16 +45,17 @@ class PG_GGM(base_model):
         n_sta = to_tensor(batch["n_sta"])
         degree = to_tensor(batch["degree"])
 
-        c_ratio = torch.clamp(ub_nc/degree,max=1.)
+        # c_ratio = torch.clamp(ub_nc/nc,max=1.)
+        c_ratio = torch.log10(ub_nc/nc)
        
         q_approx_action_t, q_approx_action_c = self.model.evaluate_graph(x,token,edge_value_action,edge_attr_with_color_collision,edge_index)
         q_approx_action_t = q_approx_action_t.squeeze()
         q_approx_action_c = q_approx_action_c.squeeze()
         sum_edge_value_action = torch.zeros_like(q_target).scatter_add_(0, edge_index[1], edge_value_action)
         c_ratio_target = torch.zeros_like(q_approx_action_c) + c_ratio
-        c_ratio_target = (c_ratio_target>=1.).float()
+        # c_ratio_target = (c_ratio_target>=1.).float()
         loss_eva = nn.functional.binary_cross_entropy(q_approx_action_t, q_target, reduction="mean")
-        loss_eva += nn.functional.binary_cross_entropy(q_approx_action_c, c_ratio_target, reduction="mean")
+        loss_eva += nn.functional.mse_loss(q_approx_action_c, c_ratio_target, reduction="mean")
         self.eva_optim.zero_grad()
         loss_eva.backward()
         self.eva_optim.step()
@@ -61,14 +63,21 @@ class PG_GGM(base_model):
 
 
         edge_value = self.model.generate_graph(x,token,edge_attr,edge_index,edge_attr_T).squeeze()
-        q_approx, q_approx_c = self.model.evaluate_graph(x,token,edge_value,edge_attr_with_color_collision,edge_index)
+        edge_value_hard = torch.zeros_like(edge_value)
+        edge_value_hard[edge_value_action==0] = -(-edge_value.detach()[edge_value_action==0]+edge_value[edge_value_action==0])
+        edge_value_hard[edge_value_action==1] = 1+(-edge_value.detach()[edge_value_action==1]+edge_value[edge_value_action==1])
+        q_approx, q_approx_c = self.model.evaluate_graph(x,token,edge_value_hard,edge_attr_with_color_collision,edge_index)
         q_approx = q_approx.squeeze()
         q_approx_c = q_approx_c.squeeze()
         # sum_edge_value = torch.zeros_like(q_target).scatter_add_(0, edge_index[1], edge_value)
         # loss_gen = nn.functional.mse_loss(edge_value,(edge_attr>0).float(), reduction="mean")
 
         if self.deterministic:
-            loss_gen = -(q_approx * q_approx_c).mean() 
+            if q_target.min() == 1 and nc <= ub_nc:
+                loss_gen = -q_approx_c.mean()
+            else:
+                loss_gen = -torch.log10(torch.clamp(q_approx.mean(),min=1e-5)) - (nc>ub_nc)*q_approx_c.mean()
+            # loss_gen = -(q_approx * q_approx_c).mean() 
         else:
             edge_value = torch.clamp(edge_value,min=1e-5)
             loss_gen = - torch.log(edge_value).mean() * ((q_target*c_ratio_target).mean()-(q_approx * q_approx_c).mean())
@@ -107,7 +116,7 @@ class PG_GGM(base_model):
         edge_index = to_tensor(edge_index,dtype=LONG_INTEGER)
         edge_attr_T = to_tensor(edge_attr_T)
         
-        edge_value = self.model.generate_graph(x,token,edge_attr,edge_index, edge_attr_T)        
+        edge_value = self.model.generate_graph(x,token,edge_attr,edge_index, edge_attr_T)  
         edge_value = to_numpy(edge_value).squeeze()
         if not hard:
             edge_value = binarize_vector(edge_value)

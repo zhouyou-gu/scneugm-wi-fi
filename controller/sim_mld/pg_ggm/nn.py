@@ -41,7 +41,7 @@ class MessagePassingNNWithEdge(MessagePassing):
         return updated
 
 class EdgeMLP(nn.Module):
-    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=10, num_hidden_layers=1, out_dim=2, activation=nn.ReLU(), output_activation=None, symmetric=True):
+    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=100, num_hidden_layers=2, out_dim=1, activation=nn.ReLU(), output_activation=nn.Sigmoid(), symmetric=True):
         super(EdgeMLP, self).__init__()
         self.symmetric = symmetric
         layers = []
@@ -105,12 +105,10 @@ class EdgeMLP(nn.Module):
         
         if self.symmetric:
             edge_features = torch.cat([x_tgt, x_src, edge_attr_T], dim=-1)  # [num_edges, 2 * (in_dim_node + token_dim) + in_dim_edge]
-            out += self.mlp(edge_features)  # [num_edges, out_dim]
+            out = out + self.mlp(edge_features)  # [num_edges, out_dim]
             out = out/2.
         
-        out = F.softmax(out,dim=1)  # [num_nodes, out_dim]
-
-        out = out[:,-1].unsqueeze(-1)
+        print(out[:5,:].flatten())
         return out
 
 # Not Used
@@ -151,7 +149,7 @@ class MaskedTransformerConv(TransformerConv):
         return out
 
 class GCNEvaluator(nn.Module):
-    def __init__(self, input_dim, edge_dim, num_layers, output_dim=2, hidden_dim=10, activation=nn.ReLU(), conv="GCNConv"):
+    def __init__(self, input_dim, edge_dim, num_layers, output_dim=1, hidden_dim=10, activation=nn.ReLU(), conv="GCNConv", out_activation=None):
         """
         Initializes the GCNEvaluator model using GCN layers with edge attributes.
 
@@ -196,6 +194,7 @@ class GCNEvaluator(nn.Module):
         
         self.convs.append(activation)
         self.o_lin = nn.Linear(hidden_dim+hidden_dim, output_dim,bias=False)
+        self.out_activation = out_activation
         
     def forward(self, x, edge_index, edge_attr=None):
         """
@@ -227,9 +226,9 @@ class GCNEvaluator(nn.Module):
             else:
                 x = layer(x)
         x = self.o_lin(torch.cat([x_,x],dim=1))
-        x = F.softmax(x,dim=1)  # [num_nodes, 2]
-        return x[:, 1].unsqueeze(-1)
-
+        if self.out_activation is not None:
+            x = self.out_activation(x)
+        return x
 class GraphGenerator(nn.Module):
     def __init__(self, node_dim=1, token_dim=5, edge_dim=1, token_enabled=False):
         """
@@ -247,18 +246,18 @@ class GraphGenerator(nn.Module):
             
         self.graph_generator = EdgeMLP(
             in_dim_node=node_dim + token_dim,  # Combined node and token dimensions
-            in_dim_edge=edge_dim,
-            out_dim=2
+            in_dim_edge=edge_dim
         )
         self.graph_evaluator_t = GCNEvaluator(
             input_dim=node_dim + token_dim,
             edge_dim=edge_dim + COLORING_RELATED_EDGE_DIM,  # Including the generated edge value and color collision
-            num_layers=1
+            num_layers=5,
+            out_activation=nn.Sigmoid()
         )
         self.graph_evaluator_c = GCNEvaluator(
             input_dim=node_dim + token_dim,
             edge_dim=edge_dim + COLORING_RELATED_EDGE_DIM,  # Including the generated edge value and color collision
-            num_layers=10
+            num_layers=5
         )
     def generate_graph(self, x, token, edge_attr, edge_index, edge_attr_T = None):
         """

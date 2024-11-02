@@ -52,7 +52,7 @@ def run_test():
     hc = sp_model.get_output_np(l)
     hc = sp_model.binarize_hard_code(hc)
     
-    _, mask = LSH.query_rows(hc,target_matching=10)
+    _, mask = LSH.query_rows(hc,target_matching=20)
 
 
     env.apply_sta_filter(mask)
