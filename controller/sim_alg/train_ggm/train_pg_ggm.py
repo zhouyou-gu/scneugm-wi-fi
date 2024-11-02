@@ -42,7 +42,8 @@ N_TRAINING_STEP = 10000
 WiFiNet.N_PACKETS = 1
 def run_test():
     env = WiFiNet(seed=GetSeed(),n_sta=1000)
-    
+    agt = agt_for_training()
+
     # tokenize sta states
     b = env.get_sta_states()
     l, _ = tk_model.get_output_np_batch(b)
@@ -61,25 +62,24 @@ def run_test():
     l, _ = tk_model.get_output_np_batch(b)
     
     S_loss, A_loss = env.get_sta_to_associated_ap_loss()
-    edge_attr, edge_index = ggm.export_all_edges(S_loss)
-    edge_attr_T, _ = ggm.export_all_edges(S_loss.T)
+    edge_attr, edge_index = agt.export_all_edges(S_loss)
+    edge_attr_T, _ = agt.export_all_edges(S_loss.T)
 
     edge_value = ggm.get_output_np_edge_weight(A_loss,l,edge_attr, edge_index, edge_attr_T)
-    adj = ggm.construct_adjacency_matrix(edge_index,edge_value,env.n_sta)
+    adj = agt.construct_adjacency_matrix(edge_index,edge_value,env.n_sta)
     edge_value_T = adj[edge_index[1],edge_index[0]]
     degree = adj.sum(axis=1)
 
-    agt = agt_for_training()
     agt.set_env(env)
-    act = agt.greedy_coloring(csr_matrix(adj))
+    act = agt.greedy_coloring(adj)
     agt.set_action(act) # place all stas in one slot
     
-    ub_act = agt.greedy_coloring(csr_matrix(env.get_CH_matrix()))
+    ub_act = agt.greedy_coloring(env.get_CH_matrix())
     ub_nc = np.max(ub_act)+1
-    color_adj = agt.get_adj_matrix_from_edge_index(env.n_sta,agt.get_same_color_edges(act)).todense()
-    color_adj = np.asarray(color_adj)
-    color_collision, _ = ggm.export_all_edges(color_adj)
+    color_adj = agt.get_adj_matrix_from_edge_index(env.n_sta,agt.get_same_color_edges(act))
+    color_collision, _ = agt.export_all_edges(color_adj)
     nc = np.max(act)+1
+    
     # run ns3
     ns3sys = sim_sys(id=i)
     ret = ns3sys.step(env=env,agt=agt,sync=True)

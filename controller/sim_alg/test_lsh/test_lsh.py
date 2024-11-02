@@ -73,7 +73,7 @@ for i in range(N_TRAINING_STEP):
     qos_fail = WiFiNet.evaluate_qos(ret)   
     print(np.mean(qos_fail),np.max(act)+1)
         
-    act = agt.greedy_coloring(scipy.sparse.csr_matrix(env.get_CH_matrix()))
+    act = agt.greedy_coloring(env.get_CH_matrix())
     agt.set_action(act)
     ns3sys = sim_sys()
     ret = ns3sys.step(env=env,agt=agt,seed=env.seed,sync=True)

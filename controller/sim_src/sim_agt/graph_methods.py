@@ -5,9 +5,7 @@ from scipy.sparse import csr_matrix
 
 class coloring_interference_matrix(sim_agt_base):
     def get_action(self):
-        mat = csr_matrix(self.env.get_CH_matrix())
-        mat.eliminate_zeros()
-        act = sim_agt_base.greedy_coloring(mat)
+        act = sim_agt_base.greedy_coloring(self.env.get_CH_matrix())
         return self.convert_action(act)
 
 
