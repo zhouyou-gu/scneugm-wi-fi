@@ -1,27 +1,23 @@
 import torch
 import torch.nn as nn
-from scipy.sparse import csr_matrix
 
 from sim_src.util import *
 
 from sim_mld.base_model import base_model
-from sim_mld.pg_ggm.nn import GraphGenerator
-from torch_geometric.utils import to_undirected
-from torch_geometric.data import Data, Batch
+from sim_mld.es_ggm.nn import *
 from torch import optim
 
-class PG_GGM(base_model):
-    def __init__(self, LR =0.001, deterministic=True):
+class ES_GGM(base_model):
+    def __init__(self, LR =0.1):
         base_model.__init__(self, LR=LR, WITH_TARGET = False)
-        self.deterministic = deterministic
+        self.mean_rwd = 0.
     
     def init_model(self):
-        self.model = GraphGenerator()
+        self.model = ESGraphGenerator()
     
     def init_optim(self):
-        self.eva_optim = optim.Adam(list(self.model.graph_evaluator_t.parameters()) + list(self.model.graph_evaluator_c.parameters()), lr=self.LR)
-        self.gen_optim = optim.Adam(self.model.graph_generator.parameters(), lr=self.LR)
-
+        pass
+    
     @counted
     def step(self, batch):        
         if not batch:
@@ -44,40 +40,27 @@ class PG_GGM(base_model):
         n_sta = to_tensor(batch["n_sta"])
         degree = to_tensor(batch["degree"])
 
-        c_ratio = torch.clamp(ub_nc/degree,max=1.)
-       
-        q_approx_action_t, q_approx_action_c = self.model.evaluate_graph(x,token,edge_value_action,edge_attr_with_color_collision,edge_index)
-        q_approx_action_t = q_approx_action_t.squeeze()
-        q_approx_action_c = q_approx_action_c.squeeze()
+        # c_ratio = torch.clamp(ub_nc/nc,max=1.)
+        
         sum_edge_value_action = torch.zeros_like(q_target).scatter_add_(0, edge_index[1], edge_value_action)
-        c_ratio_target = torch.zeros_like(q_approx_action_c) + c_ratio
-        c_ratio_target = (c_ratio_target>=1.).float()
-        loss_eva = nn.functional.binary_cross_entropy(q_approx_action_t, q_target, reduction="mean")
-        loss_eva += nn.functional.binary_cross_entropy(q_approx_action_c, c_ratio_target, reduction="mean")
-        self.eva_optim.zero_grad()
-        loss_eva.backward()
-        self.eva_optim.step()
-        self.eva_optim.zero_grad()
-
-
         edge_value = self.model.generate_graph(x,token,edge_attr,edge_index,edge_attr_T).squeeze()
-        q_approx, q_approx_c = self.model.evaluate_graph(x,token,edge_value,edge_attr_with_color_collision,edge_index)
-        q_approx = q_approx.squeeze()
-        q_approx_c = q_approx_c.squeeze()
-        # sum_edge_value = torch.zeros_like(q_target).scatter_add_(0, edge_index[1], edge_value)
-        # loss_gen = nn.functional.mse_loss(edge_value,(edge_attr>0).float(), reduction="mean")
 
-        if self.deterministic:
-            loss_gen = -(q_approx * q_approx_c).mean() 
+        # if q_target.min() == 1:
+        #     rwd = ub_nc/nc
+        #     rwd = torch.pow(rwd,3/torch.log10(n_sta+1))
+        # else:
+        #     rwd = q_target.mean()*torch.clamp(ub_nc/nc,max=1.)
+        #     rwd = torch.pow(rwd,ub_nc/nc)
+        
+        if q_target.min() == 1 and nc <= ub_nc:
+            rwd = torch.log10(ub_nc/nc)
         else:
-            edge_value = torch.clamp(edge_value,min=1e-5)
-            loss_gen = - torch.log(edge_value).mean() * ((q_target*c_ratio_target).mean()-(q_approx * q_approx_c).mean())
+            rwd = torch.log10(torch.clamp(q_target.mean()*torch.clamp(ub_nc/nc,max=1.),min=1e-5))
         
-        self.gen_optim.zero_grad()
-        loss_gen.backward()
-        self.gen_optim.step()
-        self.gen_optim.zero_grad()
         
+        self.mean_rwd = 0.1*rwd.item() + self.mean_rwd*0.9
+        self.model.update_graph(rwd.item()-self.mean_rwd,self.LR)
+
         s = ""
         s += f"K:{q_target.sum():>4.0f}/{n_sta.item():>4.0f}:{nc.item():>3.0f}>{ub_nc.item():>3.0f}"
         s += f", e:{edge_value.mean():>6.2f}"
@@ -89,18 +72,26 @@ class PG_GGM(base_model):
         s += f", m_d|q+:{sum_edge_value_action[q_target>0].mean():>6.2f}"
         s += f", m_d|q0:{sum_edge_value_action[q_target==0].mean():>6.2f}"
         s += f", m_d/K|q+:{sum_edge_value_action[q_target>0].mean()/n_sta.item():>6.2f}"
-        s += f", m_d/K|q0:{sum_edge_value_action[q_target==0].mean()/n_sta.item():>6.2f}"
-        s += f", q~:{q_approx.mean():>6.2f}"
-        s += f", ql:{loss_eva.item():>6.2f}"
+        s += f", m:{self.model.param_mean().mean():>6.4f}"
+        s += f", mv:{self.model.param_mean().var():>6.4f}"
+        s += f", vm:{self.model.param_var().mean():>6.4f}"
+        s += f", v_:{self.model.param_var().min():>6.4f}"
+        s += f", v^:{self.model.param_var().max():>6.4f}"
+
+
+
         # s += f", c(e,i):{torch.corrcoef(torch.stack([edge_value, edge_attr>0]))[0, 1].item():>4.2f}"
         # s += f", loss_gen:{loss_gen.item():>4.2f}"
         self._printalltime(s)
 
         # self._printalltime(f"loss_eva: {loss_eva.item():.4f}, loss_gen: {loss_gen.item():.4f}")
-        self._add_np_log("loss",self.N_STEP,loss_eva.item(),loss_gen.item())
+        # self._add_np_log("loss",self.N_STEP,loss_eva.item(),loss_gen.item())
+
+        self.model.update_noise()
+
 
     @torch.no_grad()
-    def get_output_np_edge_weight(self, x, token, edge_attr, edge_index, edge_attr_T, hard = False):
+    def get_output_np_edge_weight(self, x, token, edge_attr, edge_index, edge_attr_T, hard = True):
         x = to_tensor(x)
         token = to_tensor(token)
         edge_attr = to_tensor(edge_attr)
