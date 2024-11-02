@@ -9,7 +9,6 @@ from sim_mld.pg_ggm.nn import GraphGenerator
 from torch_geometric.utils import to_undirected
 from torch_geometric.data import Data, Batch
 from torch import optim
-import networkx as nx
 
 class PG_GGM(base_model):
     def __init__(self, LR =0.001, deterministic=True):
