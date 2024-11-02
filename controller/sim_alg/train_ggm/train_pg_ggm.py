@@ -5,7 +5,7 @@ from scipy.sparse import csr_matrix
 from sim_src.ns3_ctrl.sim_sys import sim_sys
 from sim_src.ns3_ctrl.wifi_net_ctrl import wifi_net_config
 from working_dir_path import get_controller_path, get_ns3_path
-from sim_mld.ggm.model import GGM
+from sim_mld.pg_ggm.model import PG_GGM
 from sim_src.sim_env.env import WiFiNet
 from sim_src.sim_agt.sim_agt_base import sim_agt_base, agt_for_training
 from torch_geometric.data import Data, Batch
@@ -36,7 +36,7 @@ sp_model.load_model(path=path)
 sp_model.eval()
 
 
-ggm = GGM()
+ggm = PG_GGM()
 
 N_TRAINING_STEP = 10000
 WiFiNet.N_PACKETS = 1

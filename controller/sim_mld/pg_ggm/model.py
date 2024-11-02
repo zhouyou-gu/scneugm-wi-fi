@@ -5,15 +5,16 @@ from scipy.sparse import csr_matrix
 from sim_src.util import *
 
 from sim_mld.base_model import base_model
-from sim_mld.ggm.nn import GraphGenerator
+from sim_mld.pg_ggm.nn import GraphGenerator
 from torch_geometric.utils import to_undirected
 from torch_geometric.data import Data, Batch
 from torch import optim
 import networkx as nx
 
-class GGM(base_model):
-    def __init__(self, LR =0.001):
+class PG_GGM(base_model):
+    def __init__(self, LR =0.001, PG=False):
         base_model.__init__(self, LR=LR, WITH_TARGET = False)
+        self.PG = PG
     
     def init_model(self):
         self.model = GraphGenerator()
@@ -67,7 +68,12 @@ class GGM(base_model):
         # sum_edge_value = torch.zeros_like(q_approx).scatter_add_(0, edge_index[1], edge_value)
         # loss_gen = nn.functional.mse_loss(edge_value,(edge_attr>0).float(), reduction="mean")
 
-        loss_gen = -(q_approx * q_approx_c).mean() 
+        if self.PG:
+            loss_gen = -(q_approx * q_approx_c).mean() 
+        
+        if self.PG:
+            edge_value = torch.clamp(edge_value,min=1e-5)
+            loss_gen = - torch.log(edge_value).mean() * ((q_target*c_ratio_target).mean()-(q_approx * q_approx_c).mean())
         
         self.gen_optim.zero_grad()
         loss_gen.backward()
