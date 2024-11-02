@@ -22,6 +22,11 @@ def GetSeed():
 def p_true(probability_of_true):
     return np.random.choice([True, False], p=[probability_of_true, 1 - probability_of_true])
 
+def binarize_vector(prob_vector):
+    binary_vector = np.random.binomial(1, prob_vector)
+    return binary_vector
+    
+
 def DbToRatio(a):
     return 10.0**(0.1 * a)
 

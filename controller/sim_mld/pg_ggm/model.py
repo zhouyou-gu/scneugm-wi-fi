@@ -112,39 +112,12 @@ class PG_GGM(base_model):
         edge_value = self.model.generate_graph(x,token,edge_attr,edge_index, edge_attr_T)        
         edge_value = to_numpy(edge_value).squeeze()
         if not hard:
-            edge_value = GGM.binarize_vector(edge_value)
+            edge_value = binarize_vector(edge_value)
         else:
             edge_value = edge_value > 0.5
             edge_value = edge_value.astype(float)
         return  edge_value
-    
-    @staticmethod
-    def binarize_vector(prob_vector, seed=None):
-        """
-        Converts a vector of probabilities into a binary vector.
-        Each element in the binary vector is 1 with probability equal to the corresponding element in prob_vector,
-        and 0 otherwise.
-
-        Parameters:
-        - prob_vector (np.ndarray): 1D array with values in the range [0, 1], representing probabilities.
-        - seed (int, optional): Seed for the random number generator for reproducibility.
-
-        Returns:
-        - binary_vector (np.ndarray): 1D binary array where each element is 0 or 1.
-        """
-        if not isinstance(prob_vector, np.ndarray):
-            raise TypeError("prob_vector must be a NumPy array.")
-        
-        if prob_vector.ndim != 1:
-            raise ValueError("prob_vector must be a 1D array.")
-        
-        if np.any(prob_vector < 0) or np.any(prob_vector > 1):
-            raise ValueError("All elements in prob_vector must be in the range [0, 1].")
-        
-        rng = np.random.default_rng(seed)
-        binary_vector = rng.binomial(1, prob_vector)
-        return binary_vector
-    
+     
     @staticmethod
     def construct_adjacency_matrix(edge_index, edge_values, num_nodes=None, directed=True, include_self_loops=False):
         """
