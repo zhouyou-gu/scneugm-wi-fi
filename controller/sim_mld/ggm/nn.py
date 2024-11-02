@@ -13,17 +13,8 @@ class MessagePassingNNWithEdge(MessagePassing):
         super(MessagePassingNNWithEdge, self).__init__(aggr='add')
         
         # MLP that takes node features and edge attributes
-        self.mlp = nn.Sequential(
-            nn.Linear(2 * in_channels + edge_dim, hidden_channels),
-            nn.ReLU(),
-            nn.Linear(hidden_channels, out_channels)
-        )
-        
-        self.update_mlp = nn.Sequential(
-            nn.Linear(out_channels, out_channels),
-            nn.ReLU(),
-            nn.Linear(out_channels, out_channels)
-        )
+        self.mlp = nn.Linear(2 * in_channels + edge_dim, out_channels,bias=False)
+        self.update_mlp = nn.Linear(out_channels, out_channels,bias=False)
     
     def forward(self, x, edge_index, edge_attr):
         # Add self-loops to the adjacency matrix
@@ -41,6 +32,7 @@ class MessagePassingNNWithEdge(MessagePassing):
     def message(self, x_i, x_j, edge_attr):
         # Concatenate target node, source node, and edge attributes
         combined = torch.cat([x_i, x_j, edge_attr], dim=1)
+
         messages = self.mlp(combined)
         return messages
     
@@ -49,7 +41,7 @@ class MessagePassingNNWithEdge(MessagePassing):
         return updated
 
 class EdgeMLP(nn.Module):
-    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=30, num_hidden_layers=3, out_dim=2, activation=nn.ReLU(), output_activation=None, symmetric=True):
+    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=10, num_hidden_layers=1, out_dim=2, activation=nn.ReLU(), output_activation=None, symmetric=True):
         super(EdgeMLP, self).__init__()
         self.symmetric = symmetric
         layers = []
@@ -110,15 +102,18 @@ class EdgeMLP(nn.Module):
 
         # Pass the concatenated features through the MLP to get edge outputs
         out = self.mlp(edge_features)  # [num_edges, out_dim]
-
+        
         if self.symmetric:
             edge_features = torch.cat([x_tgt, x_src, edge_attr_T], dim=-1)  # [num_edges, 2 * (in_dim_node + token_dim) + in_dim_edge]
             out += self.mlp(edge_features)  # [num_edges, out_dim]
             out = out/2.
-            
+        
+        out = F.softmax(out,dim=1)  # [num_nodes, out_dim]
+
+        out = out[:,-1].unsqueeze(-1)
         return out
 
-
+# Not Used
 # Custom TransformerConv that applies a mask to the attention scores based on edge attributes
 class MaskedTransformerConv(TransformerConv):
     def message(self, query_i: Tensor, key_j: Tensor, value_j: Tensor,
@@ -155,85 +150,8 @@ class MaskedTransformerConv(TransformerConv):
         out = out * alpha.view(-1, self.heads, 1)
         return out
 
-class GraphTransformer(nn.Module):
-    def __init__(self, input_dim, edge_dim, num_layers, output_dim=2, hidden_dim=10, heads = 5, activation=nn.ReLU()):
-        """
-        Initializes the GraphTransformer model.
-
-        Args:
-            input_dim (int): Dimension of the input node features.
-            hidden_dim (int): Dimension of the hidden layers.
-            heads (int): Number of attention heads in the TransformerConv layers.
-            num_layers (int): Number of TransformerConv layers.
-            edge_dim (int): Dimension of the edge features.
-        """
-        super(GraphTransformer, self).__init__()
-        assert edge_dim>COLORING_RELATED_EDGE_DIM, "edge_dim needs >= 3"
-
-        # Initial linear layer to project node features to hidden_dim * heads
-        self.i_lin = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim * heads),
-            activation,
-            nn.Linear(hidden_dim * heads, hidden_dim * heads),
-            activation,
-            nn.Linear(hidden_dim * heads, hidden_dim * heads)
-        )
-        self.edge_lin = nn.Sequential(
-            nn.Linear(edge_dim, hidden_dim),
-            activation,
-            nn.Linear(hidden_dim, hidden_dim),
-            activation,
-            nn.Linear(hidden_dim, hidden_dim)
-        )
-        # Create a list of TransformerConv layers
-        self.convs = nn.ModuleList()
-        for _ in range(num_layers):
-            self.convs.append(
-                TransformerConv(
-                    in_channels=hidden_dim * heads,
-                    out_channels=hidden_dim,
-                    heads=heads,
-                    edge_dim=hidden_dim
-                )
-            )
-        
-        # Output linear layer to produce final node outputs
-        self.o_lin = nn.Sequential(
-            nn.Linear(hidden_dim * heads, hidden_dim * heads),
-            activation,
-            nn.Linear(hidden_dim * heads, hidden_dim * heads),
-            activation,
-            nn.Linear(hidden_dim * heads, output_dim),
-        )
-
-    def forward(self, x, edge_index, edge_attr):
-        """
-        Performs a forward pass of the GraphTransformer.
-
-        Args:
-            x (Tensor): Node feature matrix of shape [num_nodes, input_dim].
-            edge_index (Tensor): Edge indices of shape [2, num_edges].
-            edge_attr (Tensor): Edge feature matrix of shape [num_edges, edge_dim].
-
-        Returns:
-            Tensor: Output tensor for each node of shape [num_nodes, 1].
-        """
-        # Project the input node features to the hidden dimension multiplied by the number of heads
-        x = self.i_lin(x)
-        edge_emb = self.edge_lin(edge_attr)
-        # edge_attr = torch.cat([edge_emb, edge_attr[:,-2:]], dim=-1)
-        # Pass the node features through each TransformerConv layer
-        for conv in self.convs:
-            x = conv(x, edge_index, edge_attr=edge_emb)
-        
-        # Apply the output linear layer and sigmoid activation to obtain final node outputs
-        x = self.o_lin(x)
-
-        return x
-
 class GCNEvaluator(nn.Module):
-    
-    def __init__(self, input_dim, edge_dim, num_layers, output_dim=2, hidden_dim=10, activation=nn.ReLU()):
+    def __init__(self, input_dim, edge_dim, num_layers, output_dim=2, hidden_dim=10, activation=nn.ReLU(), conv="GCNConv"):
         """
         Initializes the GCNEvaluator model using GCN layers with edge attributes.
 
@@ -247,42 +165,38 @@ class GCNEvaluator(nn.Module):
         """
         super(GCNEvaluator, self).__init__()
         assert edge_dim>COLORING_RELATED_EDGE_DIM, "edge_dim needs >= 3"
-
+        
         self.edge_weight_lin = nn.Sequential(
-            nn.Linear(edge_dim, hidden_dim*HIDDEN_DIM_MULTIPLIER),
+            nn.Linear(edge_dim, hidden_dim,bias=False),
             activation,
-            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim*HIDDEN_DIM_MULTIPLIER),
-            activation,
-            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim),
-            activation,
+            nn.Linear(hidden_dim, hidden_dim,bias=False),
+            activation
         )
-        self.i_lin = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim*HIDDEN_DIM_MULTIPLIER),
-            activation,
-            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim*HIDDEN_DIM_MULTIPLIER),
-            activation,
-            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim),
-        )
+
+        self.i_lin = nn.Linear(input_dim, hidden_dim)
+        
         self.convs = nn.ModuleList()
+        
         for _ in range(num_layers):
             self.convs.append(activation)
             tmp = nn.ModuleList()
             for _ in range(hidden_dim):
-                # tmp.append(GCNConv(hidden_dim, hidden_dim,add_self_loops=True,normalize=True))
-                # tmp.append(TransformerConv(in_channels=hidden_dim,out_channels=hidden_dim,edge_dim=1))
-                tmp.append(MessagePassingNNWithEdge(in_channels=hidden_dim,out_channels=hidden_dim,edge_dim=1))
-                # tmp.append(SimpleConv())
+                if conv == "GCNConv":
+                    tmp.append(GCNConv(1, 1,add_self_loops=True,normalize=True))
+                elif conv == "TransformerConv":
+                    tmp.append(TransformerConv(in_channels=1,out_channels=1,edge_dim=1))
+                elif conv == "MessagePassingNNWithEdge":
+                    tmp.append(MessagePassingNNWithEdge(in_channels=1,out_channels=1,edge_dim=1))
+                elif conv == "SimpleConv":
+                    tmp.append(SimpleConv())
+                else:
+                    raise Exception("Undefined Conv in GCNEvaluator")
             self.convs.append(tmp)
-            self.convs.append(nn.Linear(hidden_dim*hidden_dim, hidden_dim))
-
+            self.convs.append(nn.Linear(hidden_dim+hidden_dim, hidden_dim,bias=False))
+        
         self.convs.append(activation)
-        self.o_lin = nn.Sequential(
-            nn.Linear(hidden_dim+hidden_dim, hidden_dim*HIDDEN_DIM_MULTIPLIER),
-            activation,
-            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, hidden_dim*HIDDEN_DIM_MULTIPLIER),
-            activation,
-            nn.Linear(hidden_dim*HIDDEN_DIM_MULTIPLIER, output_dim),
-        )
+        self.o_lin = nn.Linear(hidden_dim+hidden_dim, output_dim,bias=False)
+        
     def forward(self, x, edge_index, edge_attr=None):
         """
         Forward pass for GCNEvaluator.
@@ -298,35 +212,26 @@ class GCNEvaluator(nn.Module):
         if edge_attr is not None:
             if edge_attr.size(1) < 3:
                 raise ValueError("edge_attr must have at least 3 features for masking.")
-            # mask = edge_attr[:, -2] * (1-edge_attr[:, -1])
-            # edge_attr_main = edge_attr[:, :-2]
             edge_weight = self.edge_weight_lin(edge_attr).squeeze(-1)  # <-- Transform edge_attr to scalar weights
-            # edge_weight = edge_weight.sigmoid()*mask
         else:
             edge_weight = None
-        print(edge_attr,"edge_attr")
-        print(edge_weight,"edge_weight")
 
         x_ = self.i_lin(x)
-        x_ = torch.zeros_like(x_)
-        x = torch.zeros_like(x_)
-        print(x,"self.i_lin")
         x = x_
         for layer in self.convs:
             if isinstance(layer, nn.ModuleList):
-                x = torch.cat([e(x, edge_index, edge_weight[:,i].unsqueeze(-1)) for i, e in enumerate(layer)], dim=1)
+                x = torch.cat([e.forward(x[:,i].unsqueeze(-1), edge_index, edge_weight[:,i].unsqueeze(-1)) for i, e in enumerate(layer)], dim=1)
+            elif isinstance(layer, nn.Linear):
+                x = layer(torch.cat([x_,x],dim=1))
+                x = x+x_
             else:
                 x = layer(x)
-            print(x,layer.__class__.__name__)
         x = self.o_lin(torch.cat([x_,x],dim=1))
-        print(x,"self.o_lin")
-        # Apply Gumbel-Softmax to obtain differentiable binary node values
-        x = F.softmax(x)  # [num_nodes, 2]
-        print(x,"softmax")
+        x = F.softmax(x,dim=1)  # [num_nodes, 2]
         return x[:, 1].unsqueeze(-1)
 
 class GraphGenerator(nn.Module):
-    def __init__(self, node_dim=1, token_dim=5, edge_dim=1, token_enabled=True):
+    def __init__(self, node_dim=1, token_dim=5, edge_dim=1, token_enabled=False):
         """
         Initializes the GraphGenerator with specified dimensions for nodes, tokens, and edges.
 
@@ -348,7 +253,7 @@ class GraphGenerator(nn.Module):
         self.graph_evaluator_t = GCNEvaluator(
             input_dim=node_dim + token_dim,
             edge_dim=edge_dim + COLORING_RELATED_EDGE_DIM,  # Including the generated edge value and color collision
-            num_layers=10
+            num_layers=1
         )
         self.graph_evaluator_c = GCNEvaluator(
             input_dim=node_dim + token_dim,
@@ -390,15 +295,10 @@ class GraphGenerator(nn.Module):
         if self.token_enabled:
             x = torch.cat([x, token], dim=-1)
         
-        # Use the EdgeMLP to generate logits for each edge
-        edge_logits = self.graph_generator(x, edge_index, edge_attr, edge_attr_T)  # [num_edges, 2]
+        # Use the EdgeMLP to generate probabilty for each edge
+        edge_values = self.graph_generator(x, edge_index, edge_attr, edge_attr_T)  # [num_edges, 2]
 
-        # Apply Gumbel-Softmax to obtain differentiable binary edge values
-        edge_values = F.gumbel_softmax(edge_logits, tau=1.0, hard=True)  # [num_edges, 2]
-
-        binary_edge_values = edge_values[:, 1].unsqueeze(-1)  # [200, 1]
-
-        return binary_edge_values
+        return edge_values
 
     def evaluate_graph(self, x, token, edge_value, edge_attr, edge_index):
         """

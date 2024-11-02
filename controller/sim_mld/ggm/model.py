@@ -17,12 +17,11 @@ class GGM(base_model):
     
     def init_model(self):
         self.model = GraphGenerator()
-        self.nc_ratio = 1.
     
     def init_optim(self):
-        self.eva_optim = optim.Adam(list(self.model.graph_evaluator_t.parameters()) + list(self.model.graph_evaluator_c.parameters()), lr=self.LR*10)
+        self.eva_optim = optim.Adam(list(self.model.graph_evaluator_t.parameters()) + list(self.model.graph_evaluator_c.parameters()), lr=self.LR)
         self.gen_optim = optim.Adam(self.model.graph_generator.parameters(), lr=self.LR)
-        
+
     @counted
     def step(self, batch):        
         if not batch:
@@ -43,14 +42,16 @@ class GGM(base_model):
         nc = to_tensor(batch["nc"])
         ub_nc = to_tensor(batch["ub_nc"])
         n_sta = to_tensor(batch["n_sta"])
+        degree = to_tensor(batch["degree"])
 
-        c_ratio = torch.clamp(ub_nc/nc,max=1.)
+        c_ratio = torch.clamp(ub_nc/degree,max=1.)
        
         q_approx_action_t, q_approx_action_c = self.model.evaluate_graph(x,token,edge_value_action,edge_attr_with_color_collision,edge_index)
         q_approx_action_t = q_approx_action_t.squeeze()
         q_approx_action_c = q_approx_action_c.squeeze()
         sum_edge_value_action = torch.zeros_like(q_approx_action_t).scatter_add_(0, edge_index[1], edge_value_action)
         c_ratio_target = torch.zeros_like(q_approx_action_c) + c_ratio
+        c_ratio_target = (c_ratio_target>=1.).float()
         loss_eva = nn.functional.binary_cross_entropy(q_approx_action_t, q_target, reduction="mean")
         loss_eva += nn.functional.binary_cross_entropy(q_approx_action_c, c_ratio_target, reduction="mean")
         self.eva_optim.zero_grad()
@@ -75,6 +76,7 @@ class GGM(base_model):
         
         s = ""
         s += f"K:{q_target.sum():>4.0f}/{n_sta.item():>4.0f}:{nc.item():>3.0f}>{ub_nc.item():>3.0f}"
+        s += f", e:{edge_value.mean():>6.2f}"
         s += f", E:{edge_value_action.numel():>6d}"
         s += f", e+:{edge_value_action[edge_value_action>0].sum():>6.0f}"
         s += f", i+:{(edge_attr>0).sum():>6.0f}"
@@ -94,7 +96,7 @@ class GGM(base_model):
         self._add_np_log("loss",self.N_STEP,loss_eva.item(),loss_gen.item())
 
     @torch.no_grad()
-    def get_output_np_edge_weight(self, x, token, edge_attr, edge_index, edge_attr_T, exploration_p = 0.):
+    def get_output_np_edge_weight(self, x, token, edge_attr, edge_index, edge_attr_T, hard = False):
         x = to_tensor(x)
         token = to_tensor(token)
         edge_attr = to_tensor(edge_attr)
@@ -103,8 +105,7 @@ class GGM(base_model):
         
         edge_value = self.model.generate_graph(x,token,edge_attr,edge_index, edge_attr_T)        
         edge_value = to_numpy(edge_value).squeeze()
-        if p_true(exploration_p):
-            print("+++++ exploration +++++")
+        if not hard:
             edge_value = GGM.binarize_vector(edge_value)
         else:
             edge_value = edge_value > 0.5
