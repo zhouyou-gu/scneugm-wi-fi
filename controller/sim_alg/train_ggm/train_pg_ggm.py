@@ -36,7 +36,7 @@ sp_model.load_model(path=path)
 sp_model.eval()
 
 
-ggm = PG_GGM()
+ggm = PG_GGM(deterministic=True)
 
 N_TRAINING_STEP = 10000
 WiFiNet.N_PACKETS = 1

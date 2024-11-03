@@ -79,8 +79,12 @@ class PG_GGM(base_model):
                 loss_gen = -torch.log10(torch.clamp(q_approx.mean(),min=1e-5)) - (nc>ub_nc)*q_approx_c.mean()
             # loss_gen = -(q_approx * q_approx_c).mean() 
         else:
+            if q_target.min() == 1 and nc <= ub_nc:
+                rwd = torch.log10(ub_nc/nc)
+            else:
+                rwd = torch.log10(torch.clamp(q_target.mean()*torch.clamp(ub_nc/nc,max=1.),min=1e-5))
             edge_value = torch.clamp(edge_value,min=1e-5)
-            loss_gen = - torch.log(edge_value).mean() * ((q_target*c_ratio_target).mean()-(q_approx * q_approx_c).mean())
+            loss_gen = - torch.log(edge_value).mean() * rwd
         
         self.gen_optim.zero_grad()
         loss_gen.backward()
