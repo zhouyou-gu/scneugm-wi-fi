@@ -1,14 +1,15 @@
 # SPARSE-GGM-WI-FI
 
 ### Installation
-Install [Pytorch](https://pytorch.org/get-started/locally/) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html)
+Install [Pytorch](https://pytorch.org/get-started/locally/) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) and [NVIDIA Drivers](https://ubuntu.com/server/docs/nvidia-drivers-installation)
 
-On Ubuntu, install the dependency of ns3 and ns3gym as
-
-```bash
+Install python packages
+```
 sudo pip3 install scipy
+```
 
-
+On Ubuntu (or WSL on Windows), install the ns3 and ns3gym dependency as (double check "protoc --version" and make the version match the python protobuf version)
+```bash
 sudo apt-get update
 sudo apt-get install gcc g++ python3 python3-pip cmake ninja-build ccache
 sudo apt-get install libzmq5 libzmq3-dev
@@ -17,13 +18,13 @@ sudo apt-get install protobuf-compiler
 sudo apt-get install pkg-config
 
 sudo pip3 install gym
-sbrewudo pip3 install pyzmq
+sudo pip3 install pyzmq
 sudo pip3 install protobuf==3.20.*
 ```
 
-On MAC, install the ns3 and ns3gym dependency as
+On MAC, install the ns3 and ns3gym dependency as (env parameters are needed to be re-exported for a new terminal)
 ```bash
-brew install cmake python gcc pkg-config protobuf protobuf-c ninja zeromq cppzmq ccache
+brew install cmake gcc pkg-config protobuf protobuf-c ninja zeromq cppzmq ccache
 
 ls -l /opt/homebrew/lib/libprotobuf.dylib
 ls -l /opt/homebrew/lib/libzmq.dylib
@@ -36,9 +37,11 @@ export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
 export CMAKE_PREFIX_PATH="/opt/homebrew:$CMAKE_PREFIX_PATH"
 export LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH"
 
+sudo pip3 install gym
+sudo pip3 install pyzmq
+sudo pip3 install protobuf
 ```
 
-Install cuda, torch and PyG based on corresponding website.
 
 <span style="color:red">**If the modification on ns-3 submodule is needed, ensure that the submodule is checked out to one of the branch other than a detached head**</span>.
 
