@@ -10,7 +10,7 @@ sudo pip3 install scipy
 
 
 sudo apt-get update
-sudo apt-get install gcc g++ python3 python3-pip cmake ninja-build
+sudo apt-get install gcc g++ python3 python3-pip cmake ninja-build ccache
 sudo apt-get install libzmq5 libzmq3-dev
 sudo apt-get install libprotobuf-dev
 sudo apt-get install protobuf-compiler
