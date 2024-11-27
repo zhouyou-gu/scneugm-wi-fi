@@ -11,7 +11,7 @@ np.set_printoptions(precision=3)
 # load tokenizer model
 tk_model = tokenizer_base()
 path = get_controller_path()
-path = os.path.join(path, "sim_alg/train_tokenizer/selected_nn/train_tokenizer-2024-October-26-23-49-11-ail/tokenizer_base.final.pt")
+path = os.path.join(path, "sim_alg/train_tokenizer/selected_nn/tokenizer_base.final.pt")
 tk_model.load_model(path=path)
 tk_model.eval()
 

@@ -9,7 +9,7 @@ class InterferenceHelper():
     BOLTZMANN = 1.3803e-23
     NOISEFIGURE = 5    
     @staticmethod
-    def bandwidth_hz_to_noise_dbm(B_hz, constant_noise =False):
+    def bandwidth_hz_to_noise_dbm(B_hz, constant_noise = False):
         # we assume constant noise floor for simplicity.
         if not constant_noise:
             nf = InterferenceHelper.db_to_dec(InterferenceHelper.NOISEFIGURE);

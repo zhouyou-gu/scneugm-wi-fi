@@ -3,13 +3,12 @@ import torch.nn as nn
 
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
+HIDDEN_DIM_MULTIPLIER = 5
+
 class node_tokenizer(nn.Module):
-    def __init__(self, input_dim=3, hidden_dim=10, latent_dim=5, num_layers=1):
+    def __init__(self, input_dim=3, latent_dim=5, num_layers=2):
         super(node_tokenizer, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.num_layers = num_layers
-        self.latent_dim = latent_dim
-        
+        hidden_dim = latent_dim*HIDDEN_DIM_MULTIPLIER
         # Input layer
         self.input_layer = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
@@ -21,10 +20,12 @@ class node_tokenizer(nn.Module):
         )
         # Encoder LSTM
         self.encoder_lstm = nn.LSTM(hidden_dim, hidden_dim, num_layers, batch_first=True)
-        # Latent space
-        self.latent = nn.Linear(hidden_dim, latent_dim)
+        # Hidden to latent space
+        self.hidden_to_latent = nn.Linear(hidden_dim, latent_dim)
+        # Hidden to latent space
+        self.latent_to_hidden = nn.Linear(latent_dim, hidden_dim)
         # Decoder LSTM
-        self.decoder_lstm = nn.LSTM(latent_dim, hidden_dim, num_layers, batch_first=True)
+        self.decoder_lstm = nn.LSTM(hidden_dim, hidden_dim, num_layers, batch_first=True)
         # Output layer
         self.output_layer = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -53,11 +54,12 @@ class node_tokenizer(nn.Module):
         # h_n: [batch_size, hidden_dim]
         
         # Latent space
-        z = self.latent(h_n)
+        z = self.hidden_to_latent(h_n)
         # z: [batch_size, latent_dim]
         return z
 
     def decode(self, z, lengths:list):
+        z = self.latent_to_hidden(z)
         batch_size = z.size(0)
         max_seq_len = max(lengths)
 

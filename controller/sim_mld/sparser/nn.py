@@ -1,19 +1,22 @@
 import torch
 import torch.nn as nn
 
+HIDDEN_DIM_MULTIPLIER = 2
 class hashing_function(nn.Module):
-    def __init__(self, latent_dim=5, hash_dim=30, single_layer = False, hidden_layer=5):
+    def __init__(self, latent_dim=5, hash_dim=30, single_layer = False):
         super(hashing_function, self).__init__()
-        self.latent_dim = latent_dim
-        self.hash_dim = hash_dim
-        
-        self.hidden_layer = hidden_layer
-        
         if not single_layer:
-            l = nn.ModuleList([nn.Linear(latent_dim, hash_dim)])
-            for _ in range(hidden_layer):
-                l.extend([nn.GELU(),nn.Linear(hash_dim, hash_dim)])
-            self.mlp = nn.Sequential(*l)
+            self.mlp = nn.Sequential(
+                nn.Linear(latent_dim, hash_dim),
+                nn.GELU(),
+                nn.Linear(hash_dim, hash_dim),
+                nn.GELU(),
+                nn.Linear(hash_dim, hash_dim),
+                nn.GELU(),                
+                nn.Linear(hash_dim, hash_dim),
+                nn.GELU(),
+                nn.Linear(hash_dim, hash_dim),
+            )
         else:
             self.mlp = nn.Linear(latent_dim, hash_dim, bias=True)
             torch.nn.init.xavier_uniform_(self.mlp.weight,gain=0.1)
