@@ -38,8 +38,8 @@ class InterferenceHelper():
         pages={1411--9},
         year={2017}}
         """
-        L = 20. * math.log10(fre_Hz/1e6) + 16 - 28
-        loss = L + 28 * math.log10(dis+1) # at least one-meter distance
+        L = 20. * np.log10(fre_Hz/1e6) + 16 - 28
+        loss = L + 28 * np.log10(dis+1) # at least one-meter distance
         return loss
     
     @staticmethod
@@ -59,7 +59,7 @@ class InterferenceHelper():
         m_lambda = InterferenceHelper.C / fre_Hz
         numerator = m_lambda * m_lambda
         denominator = 16 * InterferenceHelper.PI * InterferenceHelper.PI * dis * dis
-        lossDb = -10 * math.log10 (numerator / denominator)
+        lossDb = -10 * np.log10 (numerator / denominator)
         return lossDb
     
     @staticmethod

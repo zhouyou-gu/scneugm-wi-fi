@@ -81,31 +81,48 @@ class WiFiNet(InterferenceHelper):
         self.sta_dirs = self.sta_dirs[filter==1]
         
     def get_loss_ap_ap(self):
-        ret = np.zeros((self.n_ap,self.n_ap))
-        for i in range(self.n_ap):
-            for j in range(self.n_ap):
-                if i == j:
-                    continue
-                ret[i,j] = self._get_loss_between_locs(self.ap_locs[i],self.ap_locs[j])
-        return ret
+        # Compute pairwise differences between STAs
+        diffs = self.ap_locs[:, np.newaxis, :] - self.ap_locs[np.newaxis, :, :]  # Shape: (n_sta, n_sta, 2)
+        
+        # Compute Euclidean distances between STAs
+        distances = np.linalg.norm(diffs, axis=2)  # Shape: (n_sta, n_sta)
+        
+        # Compute path loss based on distances
+        losses = self._get_loss_distance(distances)  # Shape: (n_sta, n_sta)
+        
+        # Fill the diagonal with zeros (or np.inf if appropriate)
+        np.fill_diagonal(losses, 0)
+        
+        return losses
 
     def get_loss_sta_ap(self):
-        ret = np.ones((self.n_sta,self.n_ap))*np.inf
-        for i in range(self.n_sta):
-            for j in range(self.n_ap):
-                ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.ap_locs[j])
-            #TODO: double check the losses of each STA so each STA has at least one AP can detect its signal.
-        return ret
+        # Compute differences in coordinates
+        sta_locs_expanded = self.sta_locs[:, np.newaxis, :]  # Shape: (n_sta, 1, 2)
+        ap_locs_expanded = self.ap_locs[np.newaxis, :, :]     # Shape: (1, n_ap, 2)
+
+        # Compute Euclidean distances between STAs and APs
+        diff = sta_locs_expanded - ap_locs_expanded           # Shape: (n_sta, n_ap, 2)
+        distances = np.linalg.norm(diff, axis=2)              # Shape: (n_sta, n_ap)
+
+        # Compute path loss based on distances
+        losses = self._get_loss_distance(distances)           # Shape: (n_sta, n_ap)
+
+        return losses
 
     def get_loss_sta_sta(self):
-        ret = np.zeros((self.n_sta,self.n_sta))
-        for i in range(self.n_sta):
-            for j in range(i,self.n_sta):
-                if i == j:
-                    continue
-                ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.sta_locs[j])
-                ret[j,i] = ret[i,j]
-        return ret
+        # Compute pairwise differences between STAs
+        diffs = self.sta_locs[:, np.newaxis, :] - self.sta_locs[np.newaxis, :, :]  # Shape: (n_sta, n_sta, 2)
+        
+        # Compute Euclidean distances between STAs
+        distances = np.linalg.norm(diffs, axis=2)  # Shape: (n_sta, n_sta)
+        
+        # Compute path loss based on distances
+        losses = self._get_loss_distance(distances)  # Shape: (n_sta, n_sta)
+        
+        # Fill the diagonal with zeros (or np.inf if appropriate)
+        np.fill_diagonal(losses, 0)
+        
+        return losses
 
     def _get_loss_between_locs(self, a, b):
         dis = np.linalg.norm(np.array(a)-np.array(b),ord=2)
@@ -116,16 +133,40 @@ class WiFiNet(InterferenceHelper):
         return InterferenceHelper.fre_dis_to_loss_dB(self.fre_Hz,dis)
 
     def get_sta_states(self):
+        # Step 1: Compute the path loss matrix between all STAs and all APs
+        loss_sta_ap = self.get_loss_sta_ap()  # Shape: (n_sta, n_ap)
+        
+        # Step 2: Determine which APs are within the threshold for each STA
+        threshold = self.get_loss_sta_ap_threhold()
+        within_threshold = loss_sta_ap <= threshold  # Shape: (n_sta, n_ap)
+        
+        # Step 3: For each STA, get the indices of APs within the threshold
         state_list = []
         for k in range(self.n_sta):
-            tmp_list = []
-            for a in range(self.n_ap):
-                if self._get_loss_between_locs(self.sta_locs[k],self.ap_locs[a]) <= self.get_loss_sta_ap_threhold():
-                    t = [self.ap_locs[a][0],self.ap_locs[a][1],self._get_loss_between_locs(self.sta_locs[k],self.ap_locs[a])]
-                    t = self._normalize_sta_tuple(t)
-                    tmp_list.append(t)
-            tmp_list = sorted(tmp_list, key=lambda x: x[-1])
-            state_list.append(np.asarray(tmp_list))
+            # Get indices of APs within threshold for STA k
+            ap_indices = np.where(within_threshold[k])[0]
+            
+            if ap_indices.size == 0:
+                # If no APs are within threshold, append an empty array
+                tmp_list = np.empty((0, 3))
+            else:
+                # Extract AP coordinates and losses
+                ap_coords = self.ap_locs[ap_indices]  # Shape: (num_aps_within_threshold, 2)
+                losses = loss_sta_ap[k, ap_indices]   # Shape: (num_aps_within_threshold,)
+                
+                # Combine coordinates and losses into a single array
+                t = np.hstack((ap_coords, losses[:, np.newaxis]))  # Shape: (num_aps_within_threshold, 3)
+                
+                # Normalize the array
+                t_normalized = self._normalize_sta_tuples(t)  # We'll modify this function to handle arrays
+                
+                # Sort the array based on the normalized loss (last column)
+                sorted_indices = np.argsort(t_normalized[:, -1])
+                tmp_list = t_normalized[sorted_indices]
+            
+            # Append the result to the state list
+            state_list.append(tmp_list)
+        
         return state_list
     
     def get_sta_to_associated_ap_loss(self):
@@ -138,12 +179,14 @@ class WiFiNet(InterferenceHelper):
         A_loss = np.min(loss_sta_ap,axis=1)
         A_loss = -(A_loss - self.get_loss_sta_ap_threhold())/10
         return S_loss, A_loss
-    
-    def _normalize_sta_tuple(self,t):
-        t[0] = (t[0] - self.grid_edge/2.)/self.grid_edge
-        t[1] = (t[1] - self.grid_edge/2.)/self.grid_edge
-        t[2] = -(t[2] - self.get_loss_sta_ap_threhold())/self.get_loss_sta_ap_threhold()
-        return t
+        
+    def _normalize_sta_tuples(self, t_array):
+        # t_array is of shape (num_samples, 3)
+        t_array = np.array(t_array, dtype=float)
+        t_array[:, 0] = (t_array[:, 0] - self.grid_edge / 2.0) / self.grid_edge
+        t_array[:, 1] = (t_array[:, 1] - self.grid_edge / 2.0) / self.grid_edge
+        t_array[:, 2] = -(t_array[:, 2] - self.get_loss_sta_ap_threhold()) / self.get_loss_sta_ap_threhold()
+        return t_array
     
     def get_interfering_node_matrix(self):
         ret = np.zeros((self.n_sta,self.n_sta))
