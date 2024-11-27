@@ -324,6 +324,7 @@ class CSV_WRITER_OBJECT:
 
         self.writers[data_name].writerow([g_iteration, iteration]+ [v for v in values])
         self.files[data_name].flush()
+                
     def close(self):
         for file in self.files.values():
             file.close()

@@ -36,9 +36,13 @@ I, J = np.meshgrid(i, j, indexing='ij')
 pairs = np.column_stack([I.ravel(), J.ravel()])
 
 
+edge_count_total = np.zeros((30,15))
+edge_count = np.zeros((30,15))
+precision = np.zeros((30,15))
+recall = np.zeros((30,15))
 for pair in pairs:
     n_bit, n_tab = pair
-    print(f"Pair: ({n_bit}, {n_tab})")    
+    # print(f"Pair: ({n_bit}, {n_tab})")    
     for i in range(N_REPEAT):
         # get network state 
         env = WiFiNet(seed=GetSeed(),n_sta=1000)
@@ -62,4 +66,17 @@ for pair in pairs:
         approx_collision_matrix = lsh.export_adjacency_matrix()
 
         res = lsh.compare_adjacency_matrices(approx_collision_matrix,target_collision_matrix)
-        print(res)
+        
+        edge_count_total[n_bit,n_tab] += res["Total Edges"]
+        edge_count[n_bit,n_tab] += res["Approx Positives"]
+        precision[n_bit,n_tab] += res["Precision"]
+        recall[n_bit,n_tab] += res["Recall"]
+        
+        
+edge_count_total = edge_count_total/N_REPEAT
+edge_count = edge_count/N_REPEAT
+precision = precision/N_REPEAT
+recall = recall/N_REPEAT
+edge_proportion = edge_count/edge_count_total
+
+
