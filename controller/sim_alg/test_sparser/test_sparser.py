@@ -41,50 +41,25 @@ for pair in pairs:
     print(f"Pair: ({n_bit}, {n_tab})")    
     for i in range(N_REPEAT):
         # get network state 
-        def run():
-            env = WiFiNet(seed=GetSeed(),n_sta=1000)
-            b = env.get_sta_states()
+        env = WiFiNet(seed=GetSeed(),n_sta=1000)
+        b = env.get_sta_states()
 
-            # tokenize sta states
-            l, _ = tk_model.get_output_np_batch(b)
+        # tokenize sta states
+        l, _ = tk_model.get_output_np_batch(b)
 
-            # get collision matrix
-            target_collision_matrix = env.get_CH_matrix()
-            target_collision_matrix = csr_matrix(target_collision_matrix).astype(np.int8)
-            target_collision_matrix.eliminate_zeros()
+        # get collision matrix
+        target_collision_matrix = env.get_CH_matrix()
+        target_collision_matrix = csr_matrix(target_collision_matrix).astype(np.int8)
+        target_collision_matrix.eliminate_zeros()
 
-            # get hard code
-            hc = sp_model.get_output_np(l)
-            hc = sp_model.binarize_hard_code(hc)
+        # get hard code
+        hc = sp_model.get_output_np(l)
+        hc = sp_model.binarize_hard_code(hc)
 
-            # lsh
-            lsh = LSH(num_bits=hc.shape[1], num_tables=n_tab, bits_per_hash=n_bit)
-            lsh.build_hash_tables(hc)
-            approx_collision_matrix = lsh.export_adjacency_matrix()
+        # lsh
+        lsh = LSH(num_bits=hc.shape[1], num_tables=n_tab, bits_per_hash=n_bit)
+        lsh.build_hash_tables(hc)
+        approx_collision_matrix = lsh.export_adjacency_matrix()
 
-            res = lsh.compare_adjacency_matrices(approx_collision_matrix,target_collision_matrix)
-            print(res)
-
-
-
-        import cProfile
-        import pstats
-        import io
-
-        # Create a profiler
-        pr = cProfile.Profile()
-        pr.enable()  # Start profiling
-
-        for i in range(1):
-            run()
-            
-        pr.disable()  # Stop profiling
-
-        # Create a string stream to capture the profiling data
-        s = io.StringIO()
-        sortby = 'cumulative'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats(10)  # Print the top 10 functions
-
-        # Output the profiling results
-        print(s.getvalue())
+        res = lsh.compare_adjacency_matrices(approx_collision_matrix,target_collision_matrix)
+        print(res)
