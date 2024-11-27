@@ -19,7 +19,7 @@ tk_model.eval()
 sp_model = sparser_base()
 
 
-N_TRAINING_STEP = 10000
+N_TRAINING_STEP = 20000
 for i in range(N_TRAINING_STEP):
     # get network state 
     e = WiFiNet(seed=i)

@@ -8,7 +8,7 @@ np.set_printoptions(precision=3)
 
 model = tokenizer_base()
 
-N_TRAINING_STEP = 10000
+N_TRAINING_STEP = 2000
 for i in range(N_TRAINING_STEP):
     e = WiFiNet(seed=i)
     b = e.get_sta_states()
