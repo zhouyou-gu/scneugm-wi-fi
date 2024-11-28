@@ -54,7 +54,6 @@ for i in range(N_TRAINING_STEP):
     
     _, mask = LSH.query_rows(hc,target_matching=20)
 
-
     env.apply_sta_filter(mask)
 
     # tokenize sta states

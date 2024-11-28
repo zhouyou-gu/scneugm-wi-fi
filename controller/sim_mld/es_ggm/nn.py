@@ -9,9 +9,8 @@ HIDDEN_DIM_MULTIPLIER = 5
 
 # do not use softmax to output the binary in es
 class EdgeMLP(nn.Module):
-    def __init__(self, in_dim_node=6, in_dim_edge=1, hidden_dim=100, num_hidden_layers=2, out_dim=1, activation=nn.ReLU(), output_activation=nn.Sigmoid(), symmetric=True):
+    def __init__(self, in_dim_node=1, in_dim_edge=3, hidden_dim=50, num_hidden_layers=2, out_dim=1, activation=nn.ReLU(), output_activation=nn.Sigmoid()):
         super(EdgeMLP, self).__init__()
-        self.symmetric = symmetric
         layers = []
 
         # Input layer takes concatenated node and edge features
@@ -30,7 +29,7 @@ class EdgeMLP(nn.Module):
 
         self.mlp = nn.Sequential(*layers)
 
-    def forward(self, x, edge_index, edge_attr, edge_attr_T = None):
+    def forward(self, x, edge_index, edge_attr):
         """
         Forward pass for EdgeMLP.
 
@@ -48,15 +47,6 @@ class EdgeMLP(nn.Module):
         elif edge_attr.dim() != 2:
             raise ValueError(f"Expected edge_attr to have 1 or 2 dimensions, got {edge_attr.dim()}")
         
-        if self.symmetric:
-            assert edge_attr_T is not None, "symmetric mode need the edge_attr_T"
-            # Ensure edge_attr_sym is 2D
-            if edge_attr_T.dim() == 1:
-                edge_attr_T = edge_attr_T.unsqueeze(-1)  # Convert to [num_edges, 1]
-            elif edge_attr_T.dim() != 2:
-                raise ValueError(f"Expected edge_attr_T to have 1 or 2 dimensions, got {edge_attr_T.dim()}")
-            assert edge_attr_T.shape == edge_attr.shape, "edge_attr_T needs to be in the same shape as edge_attr"
-
         # Extract source and target node indices
         src_nodes = edge_index[0]
         tgt_nodes = edge_index[1]
@@ -71,12 +61,6 @@ class EdgeMLP(nn.Module):
         # Pass the concatenated features through the MLP to get edge outputs
         out = self.mlp(edge_features)  # [num_edges, out_dim]
         
-        if self.symmetric:
-            edge_features = torch.cat([x_tgt, x_src, edge_attr_T], dim=-1)  # [num_edges, 2 * (in_dim_node + token_dim) + in_dim_edge]
-            out = out + self.mlp(edge_features)  # [num_edges, out_dim]
-            out = out/2.
-            
-        print(out[:5,:].flatten())
         return out
 
 
@@ -123,7 +107,7 @@ def _cpy_param(model, new_flat_params):
         pos += numel
 
 class ESGraphGenerator(nn.Module):
-    def __init__(self, node_dim=1, token_dim=5, edge_dim=1, token_enabled=False, init_v = 0.1):
+    def __init__(self, node_dim=1, edge_dim=3, init_v = 0.1):
         """
         Initializes the GraphGenerator with specified dimensions for nodes, tokens, and edges.
 
@@ -133,21 +117,18 @@ class ESGraphGenerator(nn.Module):
             edge_dim (int): Dimension of the edge features.
         """
         super(ESGraphGenerator, self).__init__()
-        self.token_enabled = token_enabled
         self.init_v = init_v
-        if not self.token_enabled:
-            token_dim = 0
             
         self.graph_generator_m = EdgeMLP(
-            in_dim_node=node_dim + token_dim,  # Combined node and token dimensions
+            in_dim_node=node_dim,
             in_dim_edge=edge_dim,
         )
         self.graph_generator_v = EdgeMLP(
-            in_dim_node=node_dim + token_dim,  # Combined node and token dimensions
+            in_dim_node=node_dim,
             in_dim_edge=edge_dim,
         )
         self.graph_generator_tmp = EdgeMLP(
-            in_dim_node=node_dim + token_dim,  # Combined node and token dimensions
+            in_dim_node=node_dim,
             in_dim_edge=edge_dim,
         )
         self.n_param = _cnt_param(self.graph_generator_m)
@@ -162,7 +143,7 @@ class ESGraphGenerator(nn.Module):
             nn.init.constant_(param, 0)
  
     @torch.no_grad()
-    def generate_graph(self, x, token, edge_attr, edge_index, edge_attr_T = None):
+    def generate_graph(self, x, edge_attr, edge_index):
         """
         Generates a binary value for each edge based on node and edge features.
 
@@ -174,13 +155,7 @@ class ESGraphGenerator(nn.Module):
         Returns:
             Tensor: Binary values for each edge of shape [num_edges, 1].
         """
-        if self.token_enabled:
-            # Ensure x and token have the same number of dimensions
-            if token.dim() == 1:
-                token = token.unsqueeze(-1)  # Convert to [num_nodes, 1]
-            elif token.dim() != 2:
-                raise ValueError(f"Expected token to have 1 or 2 dimensions, got {token.dim()}")
-
+        
         if x.dim() == 1:
             x = x.unsqueeze(-1)  # Convert to [num_nodes, 1]
         elif x.dim() != 2:
@@ -192,13 +167,8 @@ class ESGraphGenerator(nn.Module):
         elif edge_attr.dim() != 2:
             raise ValueError(f"Expected edge_attr to have 1 or 2 dimensions, got {edge_attr.dim()}")
         
-        
-        # Concatenate node features with token features
-        if self.token_enabled:
-            x = torch.cat([x, token], dim=-1)
-        
         # Use the EdgeMLP to generate probabilty for each edge
-        edge_values = self.graph_generator_tmp(x, edge_index, edge_attr, edge_attr_T)  # [num_edges, 2]
+        edge_values = self.graph_generator_tmp(x, edge_index, edge_attr)  # [num_edges, 2]
         
         return edge_values
     
@@ -208,9 +178,6 @@ class ESGraphGenerator(nn.Module):
         dv = LR*r*(torch.square((_flt_param(self.graph_generator_tmp)-_flt_param(self.graph_generator_m)))/torch.exp(_flt_param(self.graph_generator_v))/2.-1./2.)
         _add_param(self.graph_generator_m, dm)
         _add_param(self.graph_generator_v, dv)
-        # dv = (1-LR)*torch.exp(_flt_param(self.graph_generator_v))
-        # dv = torch.log(dv)
-        # _cpy_param(self.graph_generator_v, dv)
 
     @torch.no_grad()  
     def update_noise(self):

@@ -13,6 +13,7 @@ from torch_geometric.data import Data, Batch
 from sim_mld.tokenizer.model import tokenizer_base
 from sim_mld.sparser.model import sparser_base
 from sim_mld.sparser.lsh import LSH
+from sim_mld.predictor.model import PCNN, PHNN
 
 from sim_src.util import *
 
@@ -35,13 +36,30 @@ path = os.path.join(path, "sim_alg/train_sparser/selected_nn/sparser_base.final.
 sp_model.load_model(path=path)
 sp_model.eval()
 
+# load PCNN
+pc_model = PCNN()
+path = get_controller_path()
+path = os.path.join(path, "sim_alg/train_predictor/selected_nn/PCNN.final.pt")
+pc_model.load_model(path=path)
+pc_model.eval()
+
+# load PHNN
+ph_model = PHNN()
+path = get_controller_path()
+path = os.path.join(path, "sim_alg/train_predictor/selected_nn/PHNN.final.pt")
+ph_model.load_model(path=path)
+ph_model.eval()
 
 ggm = ES_GGM()
 
-N_TRAINING_STEP = 10000
+N_BATCHED_STA = 20
+N_TOTAL_STA = 1000
+N_TRAINING_STEP = 1000
+SAVING_STEPS = [0,125,250,500,1000]
+
 WiFiNet.N_PACKETS = 1
 for i in range(N_TRAINING_STEP):
-    env = WiFiNet(seed=GetSeed(),n_sta=1000)
+    env = WiFiNet(seed=GetSeed(),n_sta=N_TOTAL_STA)
     agt = agt_for_training()
 
     # tokenize sta states
@@ -52,8 +70,7 @@ for i in range(N_TRAINING_STEP):
     hc = sp_model.get_output_np(l)
     hc = sp_model.binarize_hard_code(hc)
     
-    _, mask = LSH.query_rows(hc,target_matching=20)
-
+    _, mask = LSH.query_rows(hc,target_matching=N_BATCHED_STA)
 
     env.apply_sta_filter(mask)
 
@@ -61,11 +78,17 @@ for i in range(N_TRAINING_STEP):
     b = env.get_sta_states()
     l, _ = tk_model.get_output_np_batch(b)
     
+    # pre
     S_loss, A_loss = env.get_sta_to_associated_ap_loss()
     edge_attr, edge_index = agt.export_all_edges(S_loss)
-    edge_attr_T, _ = agt.export_all_edges(S_loss.T)
 
-    edge_value = ggm.get_output_np_edge_weight(A_loss,l,edge_attr, edge_index, edge_attr_T)
+    # predict o
+    oc = pc_model.get_output_np_edge_weight(l,edge_index)
+    oh = ph_model.get_output_np_edge_weight(l,edge_index)
+
+    edge_attr = np.stack([edge_attr, oc, oh], axis=-1)  # [num_edges, in_dim_edge]
+    # print(edge_attr[0,:])
+    edge_value = ggm.get_output_np_edge_weight(A_loss, l, edge_attr, edge_index)
     adj = agt.construct_adjacency_matrix(edge_index,edge_value,env.n_sta)
     edge_value_T = adj[edge_index[1],edge_index[0]]
     degree = adj.sum(axis=1)
@@ -92,9 +115,7 @@ for i in range(N_TRAINING_STEP):
     batch["x"] = A_loss
     batch["token"] = l
     batch["edge_value"] = edge_value
-    batch["edge_value_T"] = edge_value_T
     batch["edge_attr"] = edge_attr
-    batch["edge_attr_T"] = edge_attr_T
     batch["color_collision"] = color_collision
     batch["edge_index"] = edge_index
     batch["q"] = rwd
@@ -104,3 +125,7 @@ for i in range(N_TRAINING_STEP):
     batch["degree"] = degree
     
     ggm.step(batch)
+    
+
+ggm.save(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")
+ggm.save_np(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")

@@ -26,12 +26,12 @@ for i in range(N_TRAINING_STEP):
     # tokenize sta states
     b = env.get_sta_states()
     l, _ = tk_model.get_output_np_batch(b)
-    C, edge_index = agt.export_all_edges(env.get_contending_node_matrix())
+    H, edge_index = agt.export_all_edges(env.get_hidden_node_matrix())
 
     batch = {}
     batch["token"] = l
     batch["edge_index"] = edge_index
-    batch["target"] = C
+    batch["target"] = H
     model.step(batch)
 
 model.save(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")
