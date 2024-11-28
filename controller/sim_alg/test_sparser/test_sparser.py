@@ -29,20 +29,20 @@ sp_model.eval()
 
 
 
-N_REPEAT = 1
+N_REPEAT = 10
 i = np.arange(1, 16)
 j = np.arange(1, 31)
 I, J = np.meshgrid(i, j, indexing='ij')
 pairs = np.column_stack([I.ravel(), J.ravel()])
 
 
-edge_count_total = np.zeros((30,15))
-edge_count = np.zeros((30,15))
-precision = np.zeros((30,15))
-recall = np.zeros((30,15))
+edge_count_total = np.zeros((15,30))
+edge_count = np.zeros((15,30))
+precision = np.zeros((15,30))
+recall = np.zeros((15,30))
 for pair in pairs:
     n_bit, n_tab = pair
-    # print(f"Pair: ({n_bit}, {n_tab})")    
+    print(f"Pair: ({n_bit}, {n_tab})")    
     for i in range(N_REPEAT):
         # get network state 
         env = WiFiNet(seed=GetSeed(),n_sta=1000)
@@ -67,10 +67,10 @@ for pair in pairs:
 
         res = lsh.compare_adjacency_matrices(approx_collision_matrix,target_collision_matrix)
         
-        edge_count_total[n_bit,n_tab] += res["Total Edges"]
-        edge_count[n_bit,n_tab] += res["Approx Positives"]
-        precision[n_bit,n_tab] += res["Precision"]
-        recall[n_bit,n_tab] += res["Recall"]
+        edge_count_total[n_bit-1,n_tab-1] += res["Total Edges"]
+        edge_count[n_bit-1,n_tab-1] += res["Approx Positives"]
+        precision[n_bit-1,n_tab-1] += res["Precision"]
+        recall[n_bit-1,n_tab-1] += res["Recall"]
         
         
 edge_count_total = edge_count_total/N_REPEAT
@@ -80,3 +80,10 @@ recall = recall/N_REPEAT
 edge_proportion = edge_count/edge_count_total
 
 
+
+from sim_src.util import CSV_WRITER_OBJECT
+
+c = CSV_WRITER_OBJECT(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__))
+c.log_2d_array("edge_proportion",edge_proportion)
+c.log_2d_array("precision",precision)
+c.log_2d_array("recall",recall)

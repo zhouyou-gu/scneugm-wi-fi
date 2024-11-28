@@ -324,7 +324,12 @@ class CSV_WRITER_OBJECT:
 
         self.writers[data_name].writerow([g_iteration, iteration]+ [v for v in values])
         self.files[data_name].flush()
-                
+    
+    def log_2d_array(self, data_name, array):
+        if self.path is None:
+            return
+        np.savetxt(os.path.join(self.path,data_name)+".txt", array, delimiter=",",)
+         
     def close(self):
         for file in self.files.values():
             file.close()
