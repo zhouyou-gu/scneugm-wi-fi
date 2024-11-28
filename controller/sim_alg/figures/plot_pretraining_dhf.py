@@ -39,19 +39,15 @@ fig, axs = plt.subplots(1,1,)
 fig.set_size_inches(fig_width_in, fig_height_in)  # 3.5 inches width, height adjusted to maintain aspect ratio
 
 markers = ['v', '^', 'o','+']  # Different markers for each line
-# p_names = [r'a',r'b']
 lines = []
 
 for t in range(len(log_path_list)):
     data_file = os.path.join(log_path_list[t])
     data = np.genfromtxt(data_file, delimiter=',')
-    # line, = axs.plot(moving_average(data[:,3]/data[0,3]),linewidth=1,markerfacecolor='none')
-    # lines.append(line)
     line, = axs.plot(moving_average(data[:,4]/data[0,4]),linewidth=1,markerfacecolor='none')
     lines.append(line)
     line, = axs.plot(moving_average(data[:,5]/data[0,5]),linewidth=1,markerfacecolor='none')
     lines.append(line)
-    # line, = axs.plot(data[:,5]/data[0,5],linewidth=1,markerfacecolor='none')
     # lines.append(line)
 
 axs.set_position([0.175, 0.265, 0.775, 0.675])

@@ -53,11 +53,7 @@ axs.grid(True)
 
 # axs[0].set_ylabel(r'Number of iterations')
 axs.set_ylabel(r'Normalized Loss')
-# # uu = 5*20
-# # ll = 15*20
-# axs[0].set_xlim(5*20, 10*20)
-# axs[1].set_xlim(5*20, 10*20)
-#
+
 axs.set_ylim(0, 1.05)
 # # axs[2].set_xlim(uu, ll)
 # axs.set_ylim(0, 200)
