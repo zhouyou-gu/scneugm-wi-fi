@@ -5,6 +5,7 @@ from sim_mld.tokenizer.model import tokenizer_base
 from sim_src.sim_env.env import WiFiNet
 
 from sim_src.util import *
+LOG_DIR = GET_LOG_PATH_FOR_SIM_SCRIPT(__file__)
 
 np.set_printoptions(precision=3)
 
@@ -40,5 +41,5 @@ for i in range(N_TRAINING_STEP):
     sp_model.step(batch=batch)
 
 
-sp_model.save(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")
-sp_model.save_np(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")
+sp_model.save(LOG_DIR,"final")
+sp_model.save_np(LOG_DIR,"final")

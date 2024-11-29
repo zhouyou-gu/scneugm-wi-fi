@@ -6,6 +6,7 @@ from sim_src.sim_env.env import WiFiNet
 from sim_src.sim_agt.sim_agt_base import sim_agt_base, agt_for_training
 
 from sim_src.util import *
+LOG_DIR = GET_LOG_PATH_FOR_SIM_SCRIPT(__file__)
 
 np.set_printoptions(precision=3)
 
@@ -34,5 +35,5 @@ for i in range(N_TRAINING_STEP):
     batch["target"] = C
     model.step(batch)
 
-model.save(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")
-model.save_np(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")
+model.save(LOG_DIR,"final")
+model.save_np(LOG_DIR,"final")

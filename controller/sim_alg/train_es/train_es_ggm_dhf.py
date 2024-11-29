@@ -17,6 +17,8 @@ from sim_mld.predictor.model import PCNN, PHNN
 
 from sim_src.util import *
 
+LOG_DIR = GET_LOG_PATH_FOR_SIM_SCRIPT(__file__)
+
 np.set_printoptions(precision=3)
 
 wifi_net_config.PROG_PATH = get_ns3_path()
@@ -125,7 +127,9 @@ for i in range(N_TRAINING_STEP):
     batch["degree"] = degree
     
     ggm.step(batch)
-    
+    if i in SAVING_STEPS:
+        ggm.save(LOG_DIR,str(i))
 
-ggm.save(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")
-ggm.save_np(GET_LOG_PATH_FOR_SIM_SCRIPT(__file__),"final")
+
+ggm.save(LOG_DIR,"final")
+ggm.save_np(LOG_DIR,"final")

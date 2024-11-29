@@ -15,6 +15,7 @@ from sim_mld.sparser.model import sparser_base
 from sim_mld.sparser.lsh import LSH
 
 from sim_src.util import *
+LOG_DIR = GET_LOG_PATH_FOR_SIM_SCRIPT(__file__)
 
 np.set_printoptions(precision=3)
 
