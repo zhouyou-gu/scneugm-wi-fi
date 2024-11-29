@@ -40,10 +40,10 @@ class ES_GGM(base_model):
         sum_edge_value_action = torch.zeros_like(q_target).scatter_add_(0, edge_index[1], edge_value_action)
         edge_value = self.model.generate_graph(x,edge_attr,edge_index).squeeze()
 
-        if q_target.min() == 1 and nc <= ub_nc:
+        if q_target.min() == 1:
             rwd = torch.log10(ub_nc/nc)
         else:
-            rwd = torch.log10(torch.clamp(q_target.mean()*torch.clamp(ub_nc/nc,max=1.),min=1e-5))
+            rwd = torch.log10(torch.clamp(torch.clamp(q_target/self.QOS_TARGET,max=1.).mean() *torch.clamp(ub_nc/nc,max=1.),min=1e-5))
         
         
         self.mean_rwd = 0.1*rwd.item() + self.mean_rwd*0.9
@@ -68,6 +68,7 @@ class ES_GGM(base_model):
         s += f", v^:{self.model.param_var().max():>6.4f}"
 
         self._printalltime(s)
+        self._add_np_log("reward",self.N_STEP,[rwd.item()])
 
         self.model.update_noise()
 
