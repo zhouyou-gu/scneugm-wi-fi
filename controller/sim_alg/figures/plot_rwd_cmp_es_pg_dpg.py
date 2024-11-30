@@ -29,12 +29,12 @@ def moving_average(data, window_size=50):
 
 
 
-data_name_list = ["Proposed","None-B","Rand-B"]
+data_name_list = ["ES","PG","DPG"]
 
 log_path_list = []
 log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-November-30-16-43-00-ail/ES_GGM.reward.final.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_nhf/train_es_ggm_nhf-2024-November-29-10-01-19-ail/ES_GGM.reward.final.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_all/train_es_ggm_all-2024-November-29-10-26-49-ail/ES_GGM.reward.final.txt"))
+log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_vs_pg_dpg/log-train_pg/train_pg-2024-November-30-17-03-06-ail/PG_GGM.reward.final.txt"))
+log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_vs_pg_dpg/log-train_dpg/train_dpg-2024-November-30-17-11-33-ail/PG_GGM.reward.final.txt"))
 
 # Plot the data
 fig, axs = plt.subplots(1,1,)

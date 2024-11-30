@@ -78,7 +78,7 @@ for i in range(N_TRAINING_STEP):
 
     edge_attr = np.stack([edge_attr, oc, oh], axis=-1)  # [num_edges, in_dim_edge]
     # print(edge_attr[0,:])
-    edge_value = ggm.get_output_np_edge_weight(A_loss, l, edge_attr, edge_index)
+    edge_value = ggm.get_output_np_edge_weight(A_loss, edge_attr, edge_index)
     adj = agt.construct_adjacency_matrix(edge_index,edge_value,env.n_sta)
     edge_value_T = adj[edge_index[1],edge_index[0]]
     degree = adj.sum(axis=1)

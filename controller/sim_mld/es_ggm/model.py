@@ -74,9 +74,8 @@ class ES_GGM(base_model):
 
 
     @torch.no_grad()
-    def get_output_np_edge_weight(self, x, token, edge_attr, edge_index, hard = True):
+    def get_output_np_edge_weight(self, x, edge_attr, edge_index, hard = True):
         x = to_tensor(x)
-        token = to_tensor(token)
         edge_attr = to_tensor(edge_attr)
         edge_index = to_tensor(edge_index,dtype=LONG_INTEGER)
                 
@@ -87,6 +86,17 @@ class ES_GGM(base_model):
         else:
             edge_value = edge_value > 0.5
             edge_value = edge_value.astype(float)
+        return  edge_value
+ 
+ 
+    @torch.no_grad()
+    def get_output_np_edge_weight_raw(self, x, edge_attr, edge_index):
+        x = to_tensor(x)
+        edge_attr = to_tensor(edge_attr)
+        edge_index = to_tensor(edge_index,dtype=LONG_INTEGER)
+                
+        edge_value = self.model.generate_graph(x,edge_attr,edge_index)        
+        edge_value = to_numpy(edge_value).squeeze()
         return  edge_value
      
  

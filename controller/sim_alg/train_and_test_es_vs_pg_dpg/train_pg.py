@@ -5,7 +5,7 @@ from scipy.sparse import csr_matrix
 from sim_src.ns3_ctrl.sim_sys import sim_sys
 from sim_src.ns3_ctrl.wifi_net_ctrl import wifi_net_config
 from working_dir_path import get_controller_path, get_ns3_path
-from sim_mld.es_ggm.model import ES_GGM
+from sim_mld.pg_ggm.model import PG_GGM
 from sim_src.sim_env.env import WiFiNet
 from sim_src.sim_agt.sim_agt_base import sim_agt_base, agt_for_training
 from torch_geometric.data import Data, Batch
@@ -52,7 +52,7 @@ path = os.path.join(path, "sim_alg/train_predictor/selected_nn/PHNN.final.pt")
 ph_model.load_model(path=path)
 ph_model.eval()
 
-ggm = ES_GGM()
+ggm = PG_GGM(deterministic=False)
 
 N_BATCHED_STA = 20
 N_TOTAL_STA = 1000
@@ -127,9 +127,9 @@ for i in range(N_TRAINING_STEP):
     batch["degree"] = degree
     
     ggm.step(batch)
-    if i in SAVING_STEPS:
-        ggm.save(LOG_DIR,str(i))
 
-
+    edge_value_raw = ggm.get_output_np_edge_weight_raw(A_loss, edge_attr, edge_index)
+    ggm._add_np_log("edge_value_raw",ggm.N_STEP,edge_value_raw)
+    
 ggm.save(LOG_DIR,"final")
 ggm.save_np(LOG_DIR,"final")

@@ -27,8 +27,6 @@ def moving_average(data, window_size=50):
     return np.convolve(data, np.ones(window_size)/window_size, mode='full')
 
 
-
-
 data_name_list = ["Proposed","None-B","Rand-B"]
 
 log_path_list = []

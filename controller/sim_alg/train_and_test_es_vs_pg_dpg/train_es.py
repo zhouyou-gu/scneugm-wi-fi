@@ -127,9 +127,9 @@ for i in range(N_TRAINING_STEP):
     batch["degree"] = degree
     
     ggm.step(batch)
-    if i in SAVING_STEPS:
-        ggm.save(LOG_DIR,str(i))
 
-
+    edge_value_raw = ggm.get_output_np_edge_weight_raw(A_loss, edge_attr, edge_index)
+    ggm._add_np_log("edge_value_raw",ggm.N_STEP,edge_value_raw)
+    
 ggm.save(LOG_DIR,"final")
 ggm.save_np(LOG_DIR,"final")
