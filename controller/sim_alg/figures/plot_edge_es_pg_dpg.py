@@ -34,9 +34,9 @@ fig.set_size_inches(fig_width_in, fig_height_in)
 
 # Define the paths to your three data files
 data_files = [
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_dpg/train_dpg-2024-November-30-17-54-59-ail/PG_GGM.edge_value_raw.final.txt"),
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_pg/train_pg-2024-November-30-17-03-06-ail/PG_GGM.edge_value_raw.final.txt"),
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-November-30-16-43-00-ail/ES_GGM.edge_value_raw.final.txt") 
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_dpg/train_dpg-2024-December-01-10-25-24-ail/PG_GGM.edge_value_raw.final.txt"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_pg/train_pg-2024-December-01-10-34-25-ail/PG_GGM.edge_value_raw.final.txt"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-December-01-10-31-20-ail/ES_GGM.edge_value_raw.final.txt") 
 ]
 
 # Initialize a list to hold your distribution arrays

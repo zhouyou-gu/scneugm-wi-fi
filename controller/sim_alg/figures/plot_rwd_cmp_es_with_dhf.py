@@ -24,7 +24,7 @@ from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 def moving_average(data, window_size=50):
-    return np.convolve(data, np.ones(window_size)/window_size, mode='full')
+    return np.convolve(data, np.ones(window_size)/window_size, mode='')
 
 
 

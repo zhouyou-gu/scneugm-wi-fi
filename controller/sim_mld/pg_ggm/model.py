@@ -51,27 +51,22 @@ class PG_GGM(base_model):
             rwd = torch.log10(torch.clamp(torch.clamp(q_target/self.QOS_TARGET,max=1.).mean() *torch.clamp(ub_nc/nc,max=1.),min=1e-5))
 
         if self.deterministic:
-            c_ratio = torch.log10(ub_nc/nc)
-            q_approx_action_t, q_approx_action_c = self.model.evaluate_graph(x,edge_value_action,edge_attr,edge_index)
-            q_approx_action_t = q_approx_action_t.squeeze()
-            q_approx_action_c = q_approx_action_c.squeeze()
-            c_ratio_target = torch.zeros_like(q_approx_action_c) + c_ratio
-            loss_eva = nn.functional.binary_cross_entropy(q_approx_action_t, q_target, reduction="mean")
-            loss_eva += nn.functional.mse_loss(q_approx_action_c, c_ratio_target, reduction="mean")
+            # c_ratio = torch.log10(ub_nc/nc)
+            q_approx_action = self.model.evaluate_graph(x,edge_value_action,edge_attr,edge_index)
+            q_approx_action = q_approx_action.squeeze()
+            # loss_eva = nn.functional.binary_cross_entropy(q_approx_action_t, q_target, reduction="mean")
+            rwd_v = torch.ones_like(q_approx_action)*rwd
+            
+            loss_eva = nn.functional.mse_loss(q_approx_action, rwd_v, reduction="mean")
             self.eva_optim.zero_grad()
             loss_eva.backward()
             self.eva_optim.step()
             self.eva_optim.zero_grad()
             
             edge_value = self.model.generate_graph(x,edge_attr,edge_index).squeeze()
-            q_approx, q_approx_c = self.model.evaluate_graph(x,edge_value,edge_attr,edge_index)
+            q_approx = self.model.evaluate_graph(x,edge_value,edge_attr,edge_index)
             q_approx = q_approx.squeeze()
-            q_approx_c = q_approx_c.squeeze()
-            
-            if q_target.min() == 1:
-                loss_gen = -q_approx_c.mean()
-            else:
-                loss_gen = -torch.log10(torch.clamp(torch.clamp(q_approx/self.QOS_TARGET,max=1.).mean(),min=1e-5))- (nc>ub_nc)*q_approx_c.mean()
+            loss_gen = -q_approx.mean()
         else:
             edge_value = self.model.generate_graph(x,edge_attr,edge_index).squeeze()
             edge_value = torch.clamp(edge_value,min=1e-5)

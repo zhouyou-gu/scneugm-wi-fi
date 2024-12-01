@@ -219,7 +219,7 @@ class LSH:
         return results
     
     @staticmethod
-    def query_rows(binary_matrix, n=3, max_attempts=1000, target_matching=20):
+    def query_rows(binary_matrix, n=4, max_attempts=1000, target_matching=20):
         """
         Repeatedly queries the binary matrix by selecting random column positions and binary vectors
         until a target number of unique matching rows is found. If an attempt yields more matches

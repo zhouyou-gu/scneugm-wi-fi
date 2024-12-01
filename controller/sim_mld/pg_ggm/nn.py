@@ -249,4 +249,4 @@ class GraphGenerator(nn.Module):
         combined_edge_attr = torch.cat([edge_attr, edge_value], dim=-1)
         
         # Use the GraphTransformer to compute node outputs with the combined edge attributes
-        return self.graph_evaluator_t(x, edge_index, combined_edge_attr), self.graph_evaluator_c(x, edge_index, combined_edge_attr)
+        return self.graph_evaluator_c(x, edge_index, combined_edge_attr)
