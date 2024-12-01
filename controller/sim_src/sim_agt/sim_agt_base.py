@@ -51,7 +51,7 @@ class sim_agt_base(STATS_OBJECT):
         n = adj_matrix.shape[0]  # Number of vertices
         colors = np.full(n, -1, dtype=int)  # Initialize all colors to -1
 
-        adj_matrix =  csr_matrix(adj_matrix)
+        adj_matrix = csr_matrix(adj_matrix)
         adj_matrix.eliminate_zeros()
         # For in-coming neighbors, use CSC format for efficient column access
         adj_matrix_csc = adj_matrix.tocsc()

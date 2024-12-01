@@ -147,6 +147,91 @@ class LSH:
         adjacency_matrix = adjacency_matrix.tocsr()
         return adjacency_matrix
 
+    def export_adjacency_matrix_with_mask_direct(self, mask, num_random_bits=4, hamming_threshold=None):
+        """
+        Export the adjacency matrix based on randomly selected bits from masked vectors.
+        Pairs are formed between vectors that match on the selected random bits of any masked vector.
+
+        Parameters:
+            mask (numpy.ndarray or list of bool): Boolean mask array indicating which vectors are masked.
+            num_random_bits (int): Number of random bits to select from each masked vector for querying.
+            hamming_threshold (int, optional): Maximum Hamming distance to include a pair. 
+                                               If None, all matching pairs are included.
+
+        Returns:
+            scipy.sparse.csr_matrix: Sparse adjacency matrix of size (N, N).
+        """
+        if self.vectors is None:
+            raise ValueError("Vectors have not been stored. Please call build_hash_tables first.")
+
+        # Convert mask to numpy array if it's a list
+        mask = np.asarray(mask, dtype=bool)
+        if mask.shape[0] != self.num_vectors:
+            raise ValueError(f"Mask length {mask.shape[0]} does not match number of vectors {self.num_vectors}.")
+
+        masked_vector_ids = np.nonzero(mask)[0]
+        if masked_vector_ids.size == 0:
+            raise ValueError("Mask has no True values. At least one vector must be masked.")
+
+        num_vectors = self.num_vectors
+        rows = []
+        cols = []
+
+        vectors = self.vectors  # For easier access
+        num_bits = self.num_bits
+
+        for vector_id in masked_vector_ids:
+            # Randomly select bit positions for the current masked vector
+            selected_bits = np.random.choice(num_bits, size=num_random_bits, replace=False)
+            query_bits = vectors[vector_id, selected_bits]
+
+            # Find all vectors that match the query bits
+            matches = np.all(vectors[:, selected_bits] == query_bits, axis=1)
+            matching_ids = np.nonzero(matches)[0]
+
+            if matching_ids.size < 2:
+                continue  # No pairs to form
+
+            # Exclude the masked vector itself from matching_ids
+            matching_ids = matching_ids[matching_ids != vector_id]
+
+            if matching_ids.size == 0:
+                continue  # No other vectors match
+
+            # If hamming_threshold is specified, filter based on Hamming distance
+            if hamming_threshold is not None:
+                xor = vectors[vector_id] != vectors[matching_ids]
+                hamming_distances = np.sum(xor, axis=1)
+                valid = hamming_distances < hamming_threshold
+                matching_ids = matching_ids[valid]
+
+            if matching_ids.size == 0:
+                continue  # No valid matches after filtering
+
+            # Create pairs between the masked vector and matching vectors
+            pair1 = np.full(matching_ids.shape, vector_id, dtype=int)
+            pair2 = matching_ids
+
+            rows.extend(pair1)
+            cols.extend(pair2)
+
+        if not rows:
+            # No edges to add
+            adjacency_matrix = csr_matrix((num_vectors, num_vectors), dtype=np.uint8)
+            return adjacency_matrix
+
+        # Create symmetric adjacency matrix
+        data = np.ones(len(rows), dtype=np.uint8)
+        adjacency_matrix = coo_matrix((data, (rows, cols)), shape=(num_vectors, num_vectors))
+        # Since the adjacency matrix is symmetric, add the transpose
+        adjacency_matrix = adjacency_matrix + adjacency_matrix.transpose()
+        # Remove any duplicate entries
+        adjacency_matrix.data = np.clip(adjacency_matrix.data, 0, 1)
+        # Convert to CSR format for efficient arithmetic and matrix vector operations
+        adjacency_matrix = adjacency_matrix.tocsr()
+        return adjacency_matrix
+
+
     @staticmethod
     def compare_adjacency_matrices(exported_matrix, target_matrix):
         """
@@ -298,63 +383,26 @@ class LSH:
         match_mask[final_matching_rows] = True
 
         return final_matching_rows, match_mask
+    
+    
+    @staticmethod
+    def export_all_edges(adj_matrix):
+        """
+        Export all edges from the adjacency matrix in both directions as a (2, E) NumPy array.
 
+        Parameters:
+            adj_matrix (scipy.sparse.csr_matrix): The adjacency matrix of size (N, N).
 
-
-if __name__ == "__main__":
-    import numpy as np
-    from working_dir_path import get_controller_path
-    from sim_mld.sparse_transformer.sparser.model import sparser_base
-    from sim_mld.sparse_transformer.tokenizer.model import tokenizer_base
-    from sim_src.sim_env.env import WiFiNet
-
-    from sim_src.util import *
-
-    np.set_printoptions(precision=3)
-
-    # load tokenizer model
-    tk_model = tokenizer_base()
-    path = get_controller_path()
-    path = os.path.join(path, "sim_alg/train_tokenizer/selected_nn/tokenizer_base.final.pt")
-    tk_model.load_model(path=path)
-    tk_model.eval()
-
-    # load sparser model
-    sp_model = sparser_base()
-    path = get_controller_path()
-    path = os.path.join(path, "sim_alg/train_sparser/selected_nn/sparser_base.final.pt")
-    sp_model.load_model(path=path)
-    sp_model.eval()
-
-
-    N_TRAINING_STEP = 10
-    for i in range(N_TRAINING_STEP):
-        # get network state 
-        e = WiFiNet(seed=i)
-        b = e.get_sta_states()
+        Returns:
+            numpy.ndarray: A (2, E) array where each column represents a directed edge (from, to).
+        """
+        if not isinstance(adj_matrix, csr_matrix):
+            adj_matrix = adj_matrix.tocsr()
         
-        # tokenize sta states
-        l, _ = tk_model.get_output_np_batch(b)
+        # Extract the row and column indices of non-zero entries
+        rows, cols = adj_matrix.nonzero()
         
-        # get collision matrix
-        target_collision_matrix = e.get_CH_matrix()
-        target_collision_matrix = csr_matrix(target_collision_matrix).astype(np.int8)
-        target_collision_matrix.eliminate_zeros()
+        # Stack the row and column indices to form a (2, E) array
+        edges = np.vstack((rows, cols))
         
-        # get hard code
-        hc = sp_model.get_output_np(l)
-        hc = sp_model.binarize_hard_code(hc)
-        
-        # lsh
-        lsh = LSH(num_bits=sp_model.model.hash_dim, num_tables=30, bits_per_hash=6)
-        lsh.build_hash_tables(hc)
-        approx_collision_matrix = lsh.export_adjacency_matrix()
-        res = lsh.compare_adjacency_matrices(approx_collision_matrix,target_collision_matrix)
-        print(e.n_sta**2,res)
-
-
-        I = e.get_interfering_node_matrix()
-        I = csr_matrix(I).astype(np.int8)
-        I.eliminate_zeros()
-        res = lsh.compare_adjacency_matrices(I,target_collision_matrix)
-        print(e.n_sta**2,res)
+        return edges
