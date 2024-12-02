@@ -41,6 +41,36 @@ class LSH:
             hash_table = self._group_vector_ids(hash_codes, vector_ids)
             self.hash_tables[t] = hash_table
 
+    def insert_new_hash_table(self, vectors):
+        """
+        Insert a new hash table and remove the oldest hash table to maintain the number of hash tables.
+        
+        Raises:
+            ValueError: If vectors have not been built yet.
+        """
+        vectors = np.asarray(vectors, dtype=np.uint8)  # Ensure binary data is of integer type
+        num_vectors = vectors.shape[0]
+        assert num_vectors == self.num_vectors, "currently, the number of vectors cannot be changed"
+        self.num_vectors = num_vectors  # Store for later use
+        self.vectors = vectors  # Store vectors for Hamming distance computations
+
+        # Step 1: Generate a new hash function
+        new_hash_function = np.random.choice(self.num_bits, self.bits_per_hash, replace=False)
+        
+        # Step 2: Hash all vectors using the new hash function
+        hash_values = self.vectors[:, new_hash_function]
+        hash_codes = self._hash_codes(hash_values)
+        vector_ids = np.arange(self.num_vectors)
+        new_hash_table = self._group_vector_ids(hash_codes, vector_ids)
+        
+        # Step 3: Append the new hash function and hash table
+        self.hash_functions.append(new_hash_function)
+        self.hash_tables.append(new_hash_table)
+        
+        # Step 4: Remove the oldest hash function and hash table to maintain the count
+        self.hash_functions.pop(0)
+        self.hash_tables.pop(0)
+
     def _hash_codes(self, hash_values):
         """
         Convert binary hash values to integer hash codes.
