@@ -64,3 +64,10 @@ class tokenizer_base(base_model):
 
         return to_numpy(latent_vectors), to_numpy(reconstructed)
     
+    @torch.no_grad()
+    def tokenize(self, input_np_list)->np.ndarray:
+        padded_train_sequences, train_lengths = pad_tensor_sequence([to_tensor(d) for d in input_np_list])
+
+        latent_vectors = self.model.encode(padded_train_sequences, train_lengths)
+
+        return to_numpy(latent_vectors)

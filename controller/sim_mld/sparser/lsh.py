@@ -201,8 +201,8 @@ class LSH:
 
         masked_vector_ids = np.nonzero(mask)[0]
         if masked_vector_ids.size == 0:
-            raise ValueError("Mask has no True values. At least one vector must be masked.")
-
+            return csr_matrix((self.num_vectors,self.num_vectors))
+        
         num_vectors = self.num_vectors
         rows = []
         cols = []
@@ -416,7 +416,7 @@ class LSH:
     
     
     @staticmethod
-    def export_all_edges(adj_matrix):
+    def export_all_edges_of_sparse_matrix(adj_matrix):
         """
         Export all edges from the adjacency matrix in both directions as a (2, E) NumPy array.
 

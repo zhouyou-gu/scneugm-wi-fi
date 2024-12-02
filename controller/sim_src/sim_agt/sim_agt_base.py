@@ -1,7 +1,7 @@
 import numpy as np
 import networkx as nx
 
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, coo_matrix
 from sim_src.sim_env.env import WiFiNet
 
 from sim_src.util import STATS_OBJECT
@@ -191,6 +191,82 @@ class sim_agt_base(STATS_OBJECT):
                 adjacency_matrix[tgt, src] = val  # Ensure symmetry for undirected graphs
         
         return adjacency_matrix
+        
+    @staticmethod
+    def construct_sparse_adjacency_matrix(edge_index, edge_values, num_nodes=None, directed=True, include_self_loops=False):
+        """
+        Constructs a sparse adjacency matrix from edge indices and edge values.
+
+        Parameters:
+        ----------
+        edge_index : array-like (2 x E) or list of lists
+            A 2 x E array-like structure where E is the number of edges.
+            The first row/list contains source node indices,
+            and the second row/list contains target node indices.
+
+        edge_values : array-like (E,)
+            E-dimensional array-like structure containing edge values (weights).
+
+        num_nodes : int, optional
+            Number of nodes in the graph. If not provided, it will be inferred
+            from the maximum node index in edge_index.
+
+        directed : bool, default=True
+            Whether the graph is directed. If False, the adjacency matrix will be symmetric.
+
+        include_self_loops : bool, default=False
+            Whether to include self-loops (edges from a node to itself) in the adjacency matrix.
+
+        Returns:
+        -------
+        adjacency_matrix : scipy.sparse.coo_matrix
+            Sparse adjacency matrix of shape (num_nodes, num_nodes).
+        """
+        # Convert edge_index and edge_values to NumPy arrays if they aren't already
+        edge_index = np.asarray(edge_index)
+        edge_values = np.asarray(edge_values)
+
+        if edge_index.ndim != 2 or edge_index.shape[0] != 2:
+            raise ValueError("`edge_index` must be a 2 x E array-like structure.")
+
+        num_edges = edge_index.shape[1]
+        if edge_values.shape[0] != num_edges:
+            raise ValueError("Number of edges in `edge_index` and `edge_values` must match.")
+
+        # Infer number of nodes if not provided
+        if num_nodes is None:
+            if edge_index.size == 0:
+                num_nodes = 0
+            else:
+                num_nodes = max(edge_index.max(), -edge_index.min() if edge_index.min() < 0 else 0) + 1
+
+        # Extract source and target indices
+        src, tgt = edge_index
+
+        # Optionally exclude self-loops
+        if not include_self_loops:
+            mask = src != tgt
+            src = src[mask]
+            tgt = tgt[mask]
+            edge_values = edge_values[mask]
+
+        # If the graph is undirected, add reciprocal edges
+        if not directed:
+            src = np.concatenate([src, tgt])
+            tgt = np.concatenate([tgt, src[:num_edges]])  # Avoid duplication
+            edge_values = np.concatenate([edge_values, edge_values])
+
+        # Validate node indices
+        if num_nodes > 0:
+            if (src < 0).any() or (src >= num_nodes).any():
+                raise IndexError("Source node indices are out of bounds.")
+            if (tgt < 0).any() or (tgt >= num_nodes).any():
+                raise IndexError("Target node indices are out of bounds.")
+
+        # Create the sparse adjacency matrix in COO format
+        adjacency_matrix = coo_matrix((edge_values, (src, tgt)), shape=(num_nodes, num_nodes))
+
+        return adjacency_matrix.tocsr()
     
     @staticmethod
     def export_all_edges(adjacency_matrix, directed=True, include_self_loops=False):

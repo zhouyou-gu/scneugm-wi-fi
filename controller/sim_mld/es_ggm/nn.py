@@ -192,7 +192,10 @@ class ESGraphGenerator(nn.Module):
     @torch.no_grad()  
     def param_mean(self):
         return _flt_param(self.graph_generator_m)
-    
+   
+    @torch.no_grad()  
+    def no_noise_eval(self):
+        _cpy_param(self.graph_generator_tmp, _flt_param(self.graph_generator_m))
 
 
 if __name__ == "__main__":

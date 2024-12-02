@@ -99,4 +99,5 @@ class ES_GGM(base_model):
         edge_value = to_numpy(edge_value).squeeze()
         return  edge_value
      
- 
+    def eval(self):
+        self.model.no_noise_eval()
