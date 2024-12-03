@@ -62,7 +62,7 @@ sp_model.eval()
 # load GGM
 ggm = ES_GGM()
 path = get_controller_path()
-path = os.path.join(path, "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-December-03-13-31-12-ail/ES_GGM.final.pt")
+path = os.path.join(path, "sim_alg/train_and_test_es_with_dhf/selected_nn/ES_GGM.final.pt")
 ggm.load_model(path=path)
 ggm.eval()
 ggm.model.update_noise()
