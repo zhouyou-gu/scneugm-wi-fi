@@ -11,11 +11,6 @@ class LSH:
         self.num_bits = num_bits              # Length of binary vectors
         self.num_tables = num_tables          # Number of hash tables (T)
         self.bits_per_hash = bits_per_hash    # Number of bits per hash function (k)
-        self.hash_tables = [dict() for _ in range(num_tables)]
-        self.hash_functions = [
-            np.random.choice(num_bits, bits_per_hash, replace=False)
-            for _ in range(num_tables)
-        ]
         self.vectors = None  # To store the binary vectors
 
     def build_hash_tables(self, vectors):
@@ -25,6 +20,12 @@ class LSH:
         Parameters:
             vectors (list or numpy.ndarray): List or array of binary vectors.
         """
+        self.hash_tables = [dict() for _ in range(self.num_tables)]
+        self.hash_functions = [
+            np.random.choice(self.num_bits, self.bits_per_hash, replace=False)
+            for _ in range(self.num_tables)
+        ]
+        
         vectors = np.asarray(vectors, dtype=np.uint8)  # Ensure binary data is of integer type
         num_vectors = vectors.shape[0]
         vector_ids = np.arange(num_vectors)

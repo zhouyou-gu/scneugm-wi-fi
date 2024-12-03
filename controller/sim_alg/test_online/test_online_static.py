@@ -62,9 +62,10 @@ sp_model.eval()
 # load GGM
 ggm = ES_GGM()
 path = get_controller_path()
-path = os.path.join(path, "sim_alg/train_and_test_es_with_dhf/selected_nn/ES_GGM.final.pt")
+path = os.path.join(path, "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-December-03-13-31-12-ail/ES_GGM.final.pt")
 ggm.load_model(path=path)
 ggm.eval()
+ggm.model.update_noise()
 
 lsh = LSH(num_bits=30, num_tables=20, bits_per_hash=7)
 
@@ -87,7 +88,11 @@ adj_qos_list = [csr_matrix((N_TOTAL_STA,N_TOTAL_STA)) for _ in range(20)]
 WiFiNet.N_PACKETS = 1
 QOS_FAIL_MASK = np.zeros(N_TOTAL_STA)
 for i in range(N_TRAINING_STEP):
-    
+    # ggm.model.update_noise()
+    # if QOS_FAIL_MASK.sum()>0:
+    #     sim_agt_base.TWT_ASLOT_TIME += 10
+        
+    print(sim_agt_base.TWT_ASLOT_TIME)
     # get states
     b = env.get_sta_states()
     S_loss, A_loss = env.get_sta_to_associated_ap_loss()
@@ -97,15 +102,15 @@ for i in range(N_TRAINING_STEP):
     # get hard code
     hc = sp_model.get_output_np(l)
     hc = sp_model.binarize_hard_code(hc)
-    lsh.insert_new_hash_table(hc)
+    lsh.build_hash_tables(hc)
+    # lsh.insert_new_hash_table(hc)
     adj_tab = lsh.export_adjacency_matrix()
     adj_qos_tmp = lsh.export_adjacency_matrix_with_mask_direct(QOS_FAIL_MASK)
     adj_qos_list.pop(0)
     adj_qos_list.append(adj_qos_tmp)
     adj_qos = sum(adj_qos_list, csr_matrix((N_TOTAL_STA, N_TOTAL_STA)))
 
-    
-    adj = adj_tab+adj_qos
+    adj = adj_tab 
 
     adj.eliminate_zeros()
     edge_index = lsh.export_all_edges_of_sparse_matrix(adj)
@@ -121,8 +126,6 @@ for i in range(N_TRAINING_STEP):
     edge_value = ggm.get_output_np_edge_weight(A_loss, edge_attr, edge_index)
     adj = agt.construct_sparse_adjacency_matrix(edge_index,edge_value,env.n_sta)
 
-    # adj = csr_matrix(env.get_CH_matrix())
-    # adj = adj
     
     adj.eliminate_zeros()
     agt.set_env(env)
@@ -139,5 +142,31 @@ for i in range(N_TRAINING_STEP):
     print(np.abs(qos_fail.astype(int)-QOS_FAIL_MASK.astype(int)).sum(),"diff")
     QOS_FAIL_MASK = qos_fail
     print(QOS_FAIL_MASK.sum(),"qos_fail")
+    print(act[QOS_FAIL_MASK],"qos_fail_c_idx")
+    unique_numbers, counts = np.unique(act[QOS_FAIL_MASK], return_counts=True)
+    result = {int(num): int(count) for num, count in zip(unique_numbers, counts)}
+    print(result)
+    unique_numbers, counts = np.unique(act, return_counts=True)
+    result = {int(num): int(count) for num, count in zip(unique_numbers, counts)}
+    print(result)
+    
+    
+    ub_act = agt.greedy_coloring(env.get_CH_matrix())
+    ub_nc = np.max(ub_act)+1
+    batch = {}
+    batch["x"] = A_loss
+    batch["token"] = l
+    batch["edge_value"] = edge_value
+    batch["edge_attr"] = edge_attr
+    batch["color_collision"] = edge_value
+    batch["edge_index"] = edge_index
+    batch["q"] = rwd
+    batch["nc"] = nc
+    batch["ub_nc"] = ub_nc
+    batch["n_sta"] = env.n_sta
+    batch["degree"] = rwd
+    
+    ggm.step(batch)
+
 
 ggm.save_np(LOG_DIR,"final")
