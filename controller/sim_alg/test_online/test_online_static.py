@@ -151,22 +151,22 @@ for i in range(N_TRAINING_STEP):
     print(result)
     
     
-    ub_act = agt.greedy_coloring(env.get_CH_matrix())
-    ub_nc = np.max(ub_act)+1
-    batch = {}
-    batch["x"] = A_loss
-    batch["token"] = l
-    batch["edge_value"] = edge_value
-    batch["edge_attr"] = edge_attr
-    batch["color_collision"] = edge_value
-    batch["edge_index"] = edge_index
-    batch["q"] = rwd
-    batch["nc"] = nc
-    batch["ub_nc"] = ub_nc
-    batch["n_sta"] = env.n_sta
-    batch["degree"] = rwd
+    # ub_act = agt.greedy_coloring(env.get_CH_matrix())
+    # ub_nc = np.max(ub_act)+1
+    # batch = {}
+    # batch["x"] = A_loss
+    # batch["token"] = l
+    # batch["edge_value"] = edge_value
+    # batch["edge_attr"] = edge_attr
+    # batch["color_collision"] = edge_value
+    # batch["edge_index"] = edge_index
+    # batch["q"] = rwd
+    # batch["nc"] = nc
+    # batch["ub_nc"] = ub_nc
+    # batch["n_sta"] = env.n_sta
+    # batch["degree"] = rwd
     
-    ggm.step(batch)
+    # ggm.step(batch)
 
 
 ggm.save_np(LOG_DIR,"final")
