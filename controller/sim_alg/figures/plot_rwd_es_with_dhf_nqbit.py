@@ -30,17 +30,8 @@ def moving_average(data, window_size=50):
 data_name_list = ["Proposed","None-B","Rand-B"]
 
 log_path_list = []
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.1.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.2.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.3.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.4.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.5.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.6.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.7.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.8.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.9.txt"))
-log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-November-29-12-22-43-ail/ES_GGM.reward.10.txt"))
-
+for i in range(10):
+    log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-December-04-17-33-37-ail/"+"ES_GGM.reward."+ str(i+1) +".txt"))
 # Plot the data
 fig, axs = plt.subplots(1,1,)
 fig.set_size_inches(fig_width_in, fig_height_in)  # 3.5 inches width, height adjusted to maintain aspect ratio
@@ -58,7 +49,7 @@ for data_file in log_path_list:
 
 data_arrays = np.asarray(data_arrays)
 
-im = axs.imshow(data_arrays, cmap='plasma', aspect='auto', vmin=0,vmax=0.6)
+im = axs.imshow(data_arrays, cmap='plasma', aspect='auto', vmin=0,vmax=2)
 
 num_rows = 10
 num_cols = 1000

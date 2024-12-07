@@ -52,83 +52,84 @@ path = os.path.join(path, "sim_alg/train_predictor/selected_nn/PHNN.final.pt")
 ph_model.load_model(path=path)
 ph_model.eval()
 
-for nqbit in range(1,11):
+for t in range(5):
+    for nqbit in range(1,11):
 
-    ggm = ES_GGM()
+        ggm = ES_GGM()
 
-    N_BATCHED_STA = 20
-    N_TOTAL_STA = 1000
-    N_TRAINING_STEP = 1000
-    SAVING_STEPS = [0,125,250,500,1000]
+        N_BATCHED_STA = 20
+        N_TOTAL_STA = 1000
+        N_TRAINING_STEP = 1000
+        SAVING_STEPS = [0,125,250,500,1000]
 
-    WiFiNet.N_PACKETS = 1
-    for i in range(N_TRAINING_STEP):
-        env = WiFiNet(seed=GetSeed(),n_sta=N_TOTAL_STA)
-        agt = agt_for_training()
+        WiFiNet.N_PACKETS = 1
+        for i in range(N_TRAINING_STEP):
+            env = WiFiNet(seed=GetSeed(),n_sta=N_TOTAL_STA)
+            agt = agt_for_training()
 
-        # tokenize sta states
-        b = env.get_sta_states()
-        l, _ = tk_model.get_output_np_batch(b)
-        
-        # get hard code
-        hc = sp_model.get_output_np(l)
-        hc = sp_model.binarize_hard_code(hc)
-        
-        _, mask = LSH.query_rows(hc,n=nqbit,target_matching=N_BATCHED_STA)
+            # tokenize sta states
+            b = env.get_sta_states()
+            l, _ = tk_model.get_output_np_batch(b)
+            
+            # get hard code
+            hc = sp_model.get_output_np(l)
+            hc = sp_model.binarize_hard_code(hc)
+            
+            _, mask = LSH.query_rows(hc,n=nqbit,target_matching=N_BATCHED_STA)
 
-        env.apply_sta_filter(mask)
+            env.apply_sta_filter(mask)
 
-        # tokenize sta states
-        b = env.get_sta_states()
-        l, _ = tk_model.get_output_np_batch(b)
-        
-        # pre
-        S_loss, A_loss = env.get_sta_to_associated_ap_loss()
-        edge_attr, edge_index = agt.export_all_edges(S_loss)
+            # tokenize sta states
+            b = env.get_sta_states()
+            l, _ = tk_model.get_output_np_batch(b)
+            
+            # pre
+            S_loss, A_loss = env.get_sta_to_associated_ap_loss()
+            edge_attr, edge_index = agt.export_all_edges(S_loss)
 
-        # predict o
-        oc = pc_model.get_output_np_edge_weight(l,edge_index)
-        oh = ph_model.get_output_np_edge_weight(l,edge_index)
+            # predict o
+            oc = pc_model.get_output_np_edge_weight(l,edge_index)
+            oh = ph_model.get_output_np_edge_weight(l,edge_index)
 
-        edge_attr = np.stack([edge_attr, oc, oh], axis=-1)  # [num_edges, in_dim_edge]
-        # print(edge_attr[0,:])
-        edge_value = ggm.get_output_np_edge_weight(A_loss, edge_attr, edge_index)
-        adj = agt.construct_adjacency_matrix(edge_index,edge_value,env.n_sta)
-        edge_value_T = adj[edge_index[1],edge_index[0]]
-        degree = adj.sum(axis=1)
+            edge_attr = np.stack([edge_attr, oc, oh], axis=-1)  # [num_edges, in_dim_edge]
+            # print(edge_attr[0,:])
+            edge_value = ggm.get_output_np_edge_weight(A_loss, edge_attr, edge_index)
+            adj = agt.construct_adjacency_matrix(edge_index,edge_value,env.n_sta)
+            edge_value_T = adj[edge_index[1],edge_index[0]]
+            degree = adj.sum(axis=1)
 
-        agt.set_env(env)
-        act = agt.greedy_coloring(adj)
-        agt.set_action(act) # place all stas in one slot
-        
-        ub_act = agt.greedy_coloring(env.get_CH_matrix())
-        ub_nc = np.max(ub_act)+1
-        color_adj = agt.get_adj_matrix_from_edge_index(env.n_sta,agt.get_same_color_edges(act))
-        color_collision, _ = agt.export_all_edges(color_adj)
-        nc = np.max(act)+1
-        
-        # run ns3
-        ns3sys = sim_sys(id=i)
-        ret = ns3sys.step(env=env,agt=agt,sync=True)
-        qos_fail = WiFiNet.evaluate_qos(ret)
-        rwd = 1-qos_fail
-        
-        # rwd = np.zeros(env.n_sta)
+            agt.set_env(env)
+            act = agt.greedy_coloring(adj)
+            agt.set_action(act) # place all stas in one slot
+            
+            ub_act = agt.greedy_coloring(env.get_CH_matrix())
+            ub_nc = np.max(ub_act)+1
+            color_adj = agt.get_adj_matrix_from_edge_index(env.n_sta,agt.get_same_color_edges(act))
+            color_collision, _ = agt.export_all_edges(color_adj)
+            nc = np.max(act)+1
+            
+            # run ns3
+            ns3sys = sim_sys(id=i)
+            ret = ns3sys.step(env=env,agt=agt,sync=True)
+            qos_fail = WiFiNet.evaluate_qos(ret)
+            rwd = 1-qos_fail
+            
+            # rwd = np.zeros(env.n_sta)
 
-        batch = {}
-        batch["x"] = A_loss
-        batch["token"] = l
-        batch["edge_value"] = edge_value
-        batch["edge_attr"] = edge_attr
-        batch["color_collision"] = color_collision
-        batch["edge_index"] = edge_index
-        batch["q"] = rwd
-        batch["nc"] = nc
-        batch["ub_nc"] = ub_nc
-        batch["n_sta"] = env.n_sta
-        batch["degree"] = degree
-        
-        ggm.step(batch)
+            batch = {}
+            batch["x"] = A_loss
+            batch["token"] = l
+            batch["edge_value"] = edge_value
+            batch["edge_attr"] = edge_attr
+            batch["color_collision"] = color_collision
+            batch["edge_index"] = edge_index
+            batch["q"] = rwd
+            batch["nc"] = nc
+            batch["ub_nc"] = ub_nc
+            batch["n_sta"] = env.n_sta
+            batch["degree"] = degree
+            
+            ggm.step(batch)
 
-    ggm.save(LOG_DIR,str(nqbit))
-    ggm.save_np(LOG_DIR,str(nqbit))
+        ggm.save(LOG_DIR,str(nqbit)+"."+str(t))
+        ggm.save_np(LOG_DIR,str(nqbit)+"."+str(t))
