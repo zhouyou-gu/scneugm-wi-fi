@@ -142,7 +142,9 @@ for i in range(N_TRAINING_STEP):
     ggm._add_np_log("ub_nc",ggm.N_STEP,[ub_nc])
     
     indicator = (nc<=ub_nc)*((rwd.sum()/env.n_sta)>=ggm.QOS_TARGET)
-    CURR.update(float(indicator))
+    bk =  CURR.update(float(indicator))
+    if bk:
+        break
     ggm._printalltime(f"N_STA: {env.n_sta}" )
 
 ggm.save(LOG_DIR,"final")

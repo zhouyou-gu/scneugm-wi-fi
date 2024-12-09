@@ -16,8 +16,14 @@ class curr(STATS_OBJECT):
             print(self.reward_list, sum(self.reward_list)/self.WINDOW_SIZE)
             ratio = sum(self.reward_list)/self.WINDOW_SIZE
             if ratio >= 0.9:
-                self.n_sta += 50
                 self.reward_list = []
+                if self.n_sta == self.MAX_N_STA:
+                    return True
+                else:
+                    self.n_sta += 50
+                    self.n_sta = min(self.n_sta,self.MAX_N_STA)
+        return False
+                
         
     def get_n(self):
         return min(self.n_sta,self.MAX_N_STA)
