@@ -29,27 +29,31 @@ def moving_average(data, window_size=50):
 
 data_name_list = ["Proposed","None-B","Rand-B"]
 
-log_path_list = []
-for i in range(10):
-    log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-December-04-17-33-37-ail/"+"ES_GGM.reward."+ str(i+1) +".txt"))
+run_name = ["0","1","2","3","4"]
+data_arrays_all = np.zeros((10,1000))
+
+for r  in run_name:
+    log_path_list = []
+    for i in range(10):
+        log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-December-08-11-41-31-ail/"+"ES_GGM.reward."+ str(i+1)  +"."+ r+".txt"))
+
+    # Initialize a list to hold your data arrays
+    data_arrays = []
+
+    # Load the data
+    for data_file in log_path_list:
+        data = np.genfromtxt(data_file, delimiter=',')
+        # If necessary, reshape your data to 2D
+        # For example, if data is flat and represents a 10x10 grid:
+        # data = data.reshape((10, 10))
+        data_arrays.append(moving_average(data[:,3]>0)[0:1000].squeeze())
+
+    data_arrays_all += np.asarray(data_arrays)
 # Plot the data
 fig, axs = plt.subplots(1,1,)
 fig.set_size_inches(fig_width_in, fig_height_in)  # 3.5 inches width, height adjusted to maintain aspect ratio
 
-# Initialize a list to hold your data arrays
-data_arrays = []
-
-# Load the data
-for data_file in log_path_list:
-    data = np.genfromtxt(data_file, delimiter=',')
-    # If necessary, reshape your data to 2D
-    # For example, if data is flat and represents a 10x10 grid:
-    # data = data.reshape((10, 10))
-    data_arrays.append(moving_average(data[:,3]>0)[0:1000].squeeze())
-
-data_arrays = np.asarray(data_arrays)
-
-im = axs.imshow(data_arrays, cmap='plasma', aspect='auto', vmin=0,vmax=2)
+im = axs.imshow(data_arrays_all/5, cmap='plasma', aspect='auto', vmin=0,vmax=2)
 
 num_rows = 10
 num_cols = 1000

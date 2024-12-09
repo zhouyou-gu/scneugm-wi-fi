@@ -36,9 +36,9 @@ fig.set_size_inches(fig_width_in, fig_height_in)
 
 # Define the paths to your three data files
 folder = [
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-December-01-10-31-20-ail"),
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_pg/train_pg-2024-December-01-10-34-25-ail"),
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_dpg/train_dpg-2024-December-01-10-25-24-ail"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-December-08-20-48-05-ail"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_pg/train_pg-2024-December-08-21-51-27-ail"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_dpg/train_dpg-2024-December-08-21-56-56-ail"),
 ]
 
 data_list = []
