@@ -62,19 +62,17 @@ sp_model.eval()
 # load GGM
 ggm = ES_GGM()
 path = get_controller_path()
-path = os.path.join(path, "sim_alg/train_and_test_es_with_dhf/selected_nn/ES_GGM.final.pt")
+path = os.path.join(path, "sim_alg/train_curriculum_learning/selected_nn/ES_GGM.final.pt")
 ggm.load_model(path=path)
 ggm.eval()
 ggm.model.update_noise()
 
-lsh = LSH(num_bits=30, num_tables=20, bits_per_hash=7)
-
+lsh = LSH(num_bits=30, num_tables=20, bits_per_hash=2)
 
 N_TOTAL_STA = 1000
 N_TRAINING_STEP = 1000
 env = WiFiNet(seed=GetSeed(),n_sta=N_TOTAL_STA)
 agt = agt_for_training()
-
 
 b = env.get_sta_states()
 # tokenize sta states
@@ -115,6 +113,8 @@ for i in range(N_TRAINING_STEP):
     adj.eliminate_zeros()
     edge_index = lsh.export_all_edges_of_sparse_matrix(adj)
     print(edge_index.shape[1])
+    
+    tic = ggm._get_tic()
     # get edge attr
     edge_attr = S_loss[edge_index[0], edge_index[1]]
     # predict o
@@ -126,7 +126,8 @@ for i in range(N_TRAINING_STEP):
     edge_value = ggm.get_output_np_edge_weight(A_loss, edge_attr, edge_index)
     adj = agt.construct_sparse_adjacency_matrix(edge_index,edge_value,env.n_sta)
 
-    
+    tim = ggm._get_tim(tic)
+    print("computational time:", tim)
     adj.eliminate_zeros()
     agt.set_env(env)
     act = agt.greedy_coloring(adj)
