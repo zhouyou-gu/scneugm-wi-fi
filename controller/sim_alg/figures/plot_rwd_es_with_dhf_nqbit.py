@@ -53,7 +53,7 @@ for r  in run_name:
 fig, axs = plt.subplots(1,1,)
 fig.set_size_inches(fig_width_in, fig_height_in)  # 3.5 inches width, height adjusted to maintain aspect ratio
 
-im = axs.imshow(data_arrays_all/5, cmap='plasma', aspect='auto', vmin=0,vmax=2)
+im = axs.imshow(data_arrays_all/5, cmap='plasma', aspect='auto', vmin=0,vmax=1)
 
 num_rows = 10
 num_cols = 1000
@@ -77,7 +77,7 @@ axs.set_ylabel(r'$\Upsilon$')
 
 cbar_ax = fig.add_axes([0.875, 0.265, 0.02, 0.675])  # Position for the colorbar
 cbar =fig.colorbar(im, cax=cbar_ax)
-cbar.set_ticks([0, 0.3, 0.6])
+cbar.set_ticks([0, 0.5, 1])
 
 # Add a legend
 # fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.2, 0.525, 0.2, 0.1),ncol = 1 ,borderaxespad=0.1,handlelength=1,fancybox=True, framealpha=1, columnspacing=0.5)

@@ -102,12 +102,12 @@ for i in range(3):
         axs[i].set_ylim(-0.1, 1)
 
     if i == 1:
-        axs[i].set_ylim(-0.2, 3)
-        axs[i].set_yticks([0,1,2,3])      # Remove y-axis ticks
+        axs[i].set_ylim(-0.2, 4)
+        axs[i].set_yticks([0,2,4])      # Remove y-axis ticks
 
     if i == 2:
         axs[i].set_ylim(-0.02, 0.4)
-        axs[i].set_yticks([0.0,0.1,0.2,0.3,0.4])      # Remove y-axis ticks
+        axs[i].set_yticks([0.0,0.2,0.4])      # Remove y-axis ticks
 
     axs[i].set_xlim(0, 1000)
     axs[i].set_position([0.175, 0.11+i*0.275, 0.75, 0.25])
