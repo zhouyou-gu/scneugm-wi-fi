@@ -30,12 +30,12 @@ def moving_average(data, window_size=50):
 data_name_list = ["Proposed","None-B","Rand-B"]
 
 run_name = ["0","1","2","3","4"]
-data_arrays_all = np.zeros((10,1000))
+data_arrays_all = np.zeros((11,1000))
 
 for r  in run_name:
     log_path_list = []
-    for i in range(10):
-        log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-December-08-11-41-31-ail/"+"ES_GGM.reward."+ str(i+1)  +"."+ r+".txt"))
+    for i in range(11):
+        log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_and_test_es_with_dhf/log-train_es_ggm_with_dhf_n_qbit/train_es_ggm_with_dhf_n_qbit-2024-December-08-11-41-31-ail/"+"ES_GGM.reward."+ str(i)  +"."+ r+".txt"))
 
     # Initialize a list to hold your data arrays
     data_arrays = []
@@ -55,15 +55,15 @@ fig.set_size_inches(fig_width_in, fig_height_in)  # 3.5 inches width, height adj
 
 im = axs.imshow(data_arrays_all/5, cmap='plasma', aspect='auto', vmin=0,vmax=1)
 
-num_rows = 10
+num_rows = 11
 num_cols = 1000
 
 axs.set_position([0.15, 0.265, 0.7, 0.675])
 # Add labels and title
 axs.set_xlabel(r'Iterations')
 # axs.grid(True)
-axs.set_yticks(np.arange(1, 10, 2))
-axs.set_yticklabels(np.arange(1, 10, 2)+1)
+axs.set_yticks(np.arange(0, 11, 2))
+axs.set_yticklabels(np.arange(0, 11, 2))
 
 axs.set_xticks(np.arange(0, 6)*200-0.5)
 axs.set_xticklabels(np.arange(0, 6)*200)
