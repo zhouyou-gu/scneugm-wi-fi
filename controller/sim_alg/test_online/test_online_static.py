@@ -65,7 +65,7 @@ path = get_controller_path()
 path = os.path.join(path, "sim_alg/train_curriculum_learning/selected_nn/ES_GGM.final.pt")
 ggm.load_model(path=path)
 ggm.eval()
-ggm.model.update_noise()
+# ggm.model.update_noise()
 
 lsh = LSH(num_bits=30, num_tables=20, bits_per_hash=7)
 
@@ -82,7 +82,7 @@ hc = sp_model.get_output_np(l)
 hc = sp_model.binarize_hard_code(hc)
 lsh.build_hash_tables(hc)
 
-adj_qos_list = [csr_matrix((N_TOTAL_STA,N_TOTAL_STA)) for _ in range(20)]
+adj_col_list = [csr_matrix((N_TOTAL_STA,N_TOTAL_STA)) for _ in range(20)]
 WiFiNet.N_PACKETS = 1
 QOS_FAIL_MASK = np.zeros(N_TOTAL_STA)
 for i in range(N_TRAINING_STEP):
@@ -103,12 +103,11 @@ for i in range(N_TRAINING_STEP):
     lsh.build_hash_tables(hc)
     # lsh.insert_new_hash_table(hc)
     adj_tab = lsh.export_adjacency_matrix()
-    adj_qos_tmp = lsh.export_adjacency_matrix_with_mask_direct(QOS_FAIL_MASK)
-    adj_qos_list.pop(0)
-    adj_qos_list.append(adj_qos_tmp)
-    adj_qos = sum(adj_qos_list, csr_matrix((N_TOTAL_STA, N_TOTAL_STA)))
+    adj_qos = lsh.export_adjacency_matrix_with_mask_direct(QOS_FAIL_MASK)
+    adj_col = sum(adj_col_list, csr_matrix((N_TOTAL_STA, N_TOTAL_STA)))
 
-    adj = adj_tab
+    
+    adj = adj_tab + adj_qos + adj_col
 
     adj.eliminate_zeros()
     edge_index = lsh.export_all_edges_of_sparse_matrix(adj)
@@ -130,6 +129,8 @@ for i in range(N_TRAINING_STEP):
     print("computational time:", tim)
     adj.eliminate_zeros()
     agt.set_env(env)
+    adj_col_list.pop(0)
+    adj_col_list.append(adj)
     act = agt.greedy_coloring(adj)
     agt.set_action(act) # place all stas in one slot
     nc = np.max(act)+1
@@ -151,23 +152,6 @@ for i in range(N_TRAINING_STEP):
     result = {int(num): int(count) for num, count in zip(unique_numbers, counts)}
     print(result)
     
-    
-    # ub_act = agt.greedy_coloring(env.get_CH_matrix())
-    # ub_nc = np.max(ub_act)+1
-    # batch = {}
-    # batch["x"] = A_loss
-    # batch["token"] = l
-    # batch["edge_value"] = edge_value
-    # batch["edge_attr"] = edge_attr
-    # batch["color_collision"] = edge_value
-    # batch["edge_index"] = edge_index
-    # batch["q"] = rwd
-    # batch["nc"] = nc
-    # batch["ub_nc"] = ub_nc
-    # batch["n_sta"] = env.n_sta
-    # batch["degree"] = rwd
-    
-    # ggm.step(batch)
 
 
 ggm.save_np(LOG_DIR,"final")
