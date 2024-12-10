@@ -67,7 +67,7 @@ ggm.load_model(path=path)
 ggm.eval()
 ggm.model.update_noise()
 
-lsh = LSH(num_bits=30, num_tables=20, bits_per_hash=2)
+lsh = LSH(num_bits=30, num_tables=20, bits_per_hash=7)
 
 N_TOTAL_STA = 1000
 N_TRAINING_STEP = 1000
@@ -108,7 +108,7 @@ for i in range(N_TRAINING_STEP):
     adj_qos_list.append(adj_qos_tmp)
     adj_qos = sum(adj_qos_list, csr_matrix((N_TOTAL_STA, N_TOTAL_STA)))
 
-    adj = adj_tab 
+    adj = adj_tab
 
     adj.eliminate_zeros()
     edge_index = lsh.export_all_edges_of_sparse_matrix(adj)
