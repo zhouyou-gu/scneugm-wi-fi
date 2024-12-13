@@ -69,7 +69,7 @@ CURR = curr()
 
 WiFiNet.N_PACKETS = 1
 for i in range(N_TRAINING_STEP):
-    N_STA = CURR.get_n()
+    N_STA = min(i+N_BATCHED_STA,N_TOTAL_STA)
     
     env = WiFiNet(seed=GetSeed(),n_sta=N_TOTAL_STA)
     agt = agt_for_training()

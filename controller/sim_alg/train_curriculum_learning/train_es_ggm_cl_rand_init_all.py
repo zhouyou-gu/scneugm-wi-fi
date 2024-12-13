@@ -62,14 +62,14 @@ ggm = ES_GGM()
 
 N_BATCHED_STA = 20
 N_TOTAL_STA = 1000
-N_TRAINING_STEP = 10000
+N_TRAINING_STEP = 1200
 SAVING_STEPS = [0,125,250,500,1000]
 
 CURR = curr()
 
 WiFiNet.N_PACKETS = 1
 for i in range(N_TRAINING_STEP):
-    N_STA = CURR.get_n()
+    N_STA = CURR.get_max_n()
     
     env = WiFiNet(seed=GetSeed(),n_sta=N_TOTAL_STA)
     agt = agt_for_training()
@@ -143,8 +143,7 @@ for i in range(N_TRAINING_STEP):
     
     indicator = (nc<=ub_nc)*((rwd.sum()/env.n_sta)>=ggm.QOS_TARGET)
     bk =  CURR.update_soft(float(indicator))
-    if bk:
-        break
+
     ggm._printalltime(f"N_STA: {env.n_sta}, AVG_RWD: {CURR.rwd_avg}" )
 
 ggm.save(LOG_DIR,"final")

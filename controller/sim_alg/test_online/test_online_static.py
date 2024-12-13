@@ -103,11 +103,10 @@ for i in range(N_TRAINING_STEP):
     lsh.build_hash_tables(hc)
     # lsh.insert_new_hash_table(hc)
     adj_tab = lsh.export_adjacency_matrix()
-    adj_qos = lsh.export_adjacency_matrix_with_mask_direct(QOS_FAIL_MASK)
+    # adj_qos = lsh.export_adjacency_matrix_with_mask_direct(QOS_FAIL_MASK)
     adj_col = sum(adj_col_list, csr_matrix((N_TOTAL_STA, N_TOTAL_STA)))
 
-    
-    adj = adj_tab + adj_qos + adj_col
+    adj = adj_tab + adj_col
 
     adj.eliminate_zeros()
     edge_index = lsh.export_all_edges_of_sparse_matrix(adj)
