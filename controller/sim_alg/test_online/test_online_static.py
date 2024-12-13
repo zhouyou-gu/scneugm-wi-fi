@@ -67,90 +67,84 @@ ggm.load_model(path=path)
 ggm.eval()
 # ggm.model.update_noise()
 
-lsh = LSH(num_bits=30, num_tables=20, bits_per_hash=7)
 
 N_TOTAL_STA = 1000
-N_TRAINING_STEP = 1000
-env = WiFiNet(seed=GetSeed(),n_sta=N_TOTAL_STA)
-agt = agt_for_training()
+N_TRAINING_STEP = 200
+N_TUNE_STEP = 5
 
-b = env.get_sta_states()
-# tokenize sta states
-l = tk_model.tokenize(b)
-# get hard code
-hc = sp_model.get_output_np(l)
-hc = sp_model.binarize_hard_code(hc)
-lsh.build_hash_tables(hc)
+for t in range(N_TRAINING_STEP):
+    env = WiFiNet(seed=GetSeed(),n_sta=N_TOTAL_STA)
+    agt = agt_for_training()
+    lsh = LSH(num_bits=30, num_tables=20, bits_per_hash=7)
 
-adj_col_list = [csr_matrix((N_TOTAL_STA,N_TOTAL_STA)) for _ in range(20)]
-WiFiNet.N_PACKETS = 1
-QOS_FAIL_MASK = np.zeros(N_TOTAL_STA)
-for i in range(N_TRAINING_STEP):
-    # ggm.model.update_noise()
-    # if QOS_FAIL_MASK.sum()>0:
-    #     sim_agt_base.TWT_ASLOT_TIME += 10
+    adj_col_list = [csr_matrix((N_TOTAL_STA,N_TOTAL_STA)) for _ in range(20)]
+    WiFiNet.N_PACKETS = 1
+    QOS_FAIL_MASK = np.zeros(N_TOTAL_STA)
+    for i in range(N_TUNE_STEP):
+        print(sim_agt_base.TWT_ASLOT_TIME)
+        # get states
+        b = env.get_sta_states()
+        S_loss, A_loss = env.get_sta_to_associated_ap_loss()
+
+        # tokenize sta states
+        l = tk_model.tokenize(b)
+        # get hard code
+        hc = sp_model.get_output_np(l)
+        hc = sp_model.binarize_hard_code(hc)
+        lsh.build_hash_tables(hc)
+        # lsh.insert_new_hash_table(hc)
+        adj_tab = lsh.export_adjacency_matrix()
+        # adj_qos = lsh.export_adjacency_matrix_with_mask_direct(QOS_FAIL_MASK)
+        adj_col = sum(adj_col_list, csr_matrix((N_TOTAL_STA, N_TOTAL_STA)))
+
+        adj = adj_tab + adj_col
+
+        adj.eliminate_zeros()
+        edge_index = lsh.export_all_edges_of_sparse_matrix(adj)
+        n_processed_edges = edge_index.shape[1]
+        print(edge_index.shape[1])
         
-    print(sim_agt_base.TWT_ASLOT_TIME)
-    # get states
-    b = env.get_sta_states()
-    S_loss, A_loss = env.get_sta_to_associated_ap_loss()
+        tic = ggm._get_tic()
+        # get edge attr
+        edge_attr = S_loss[edge_index[0], edge_index[1]]
+        # predict o
+        oc = pc_model.get_output_np_edge_weight(l,edge_index)
+        oh = ph_model.get_output_np_edge_weight(l,edge_index)
 
-    # tokenize sta states
-    l = tk_model.tokenize(b)
-    # get hard code
-    hc = sp_model.get_output_np(l)
-    hc = sp_model.binarize_hard_code(hc)
-    lsh.build_hash_tables(hc)
-    # lsh.insert_new_hash_table(hc)
-    adj_tab = lsh.export_adjacency_matrix()
-    # adj_qos = lsh.export_adjacency_matrix_with_mask_direct(QOS_FAIL_MASK)
-    adj_col = sum(adj_col_list, csr_matrix((N_TOTAL_STA, N_TOTAL_STA)))
+        edge_attr = np.stack([edge_attr, oc, oh], axis=-1)  # [num_edges, in_dim_edge]
+        
+        edge_value = ggm.get_output_np_edge_weight(A_loss, edge_attr, edge_index)
+        adj = agt.construct_sparse_adjacency_matrix(edge_index,edge_value,env.n_sta)
 
-    adj = adj_tab + adj_col
+        tim = ggm._get_tim(tic)
+        print("computational time:", tim)
+        adj.eliminate_zeros()
+        agt.set_env(env)
+        adj_col_list.pop(0)
+        adj_col_list.append(adj)
+        act = agt.greedy_coloring(adj)
+        agt.set_action(act) # place all stas in one slot
+        nc = np.max(act)+1
+        print(nc,"nc")
 
-    adj.eliminate_zeros()
-    edge_index = lsh.export_all_edges_of_sparse_matrix(adj)
-    print(edge_index.shape[1])
-    
-    tic = ggm._get_tic()
-    # get edge attr
-    edge_attr = S_loss[edge_index[0], edge_index[1]]
-    # predict o
-    oc = pc_model.get_output_np_edge_weight(l,edge_index)
-    oh = ph_model.get_output_np_edge_weight(l,edge_index)
-
-    edge_attr = np.stack([edge_attr, oc, oh], axis=-1)  # [num_edges, in_dim_edge]
-    
-    edge_value = ggm.get_output_np_edge_weight(A_loss, edge_attr, edge_index)
-    adj = agt.construct_sparse_adjacency_matrix(edge_index,edge_value,env.n_sta)
-
-    tim = ggm._get_tim(tic)
-    print("computational time:", tim)
-    adj.eliminate_zeros()
-    agt.set_env(env)
-    adj_col_list.pop(0)
-    adj_col_list.append(adj)
-    act = agt.greedy_coloring(adj)
-    agt.set_action(act) # place all stas in one slot
-    nc = np.max(act)+1
-    print(nc,"nc")
-
-    # run ns3
-    ns3sys = sim_sys(id=i)
-    ret = ns3sys.step(env=env,agt=agt,sync=True)
-    qos_fail = WiFiNet.evaluate_qos(ret)
-    rwd = 1-qos_fail
-    print(np.abs(qos_fail.astype(int)-QOS_FAIL_MASK.astype(int)).sum(),"diff")
-    QOS_FAIL_MASK = qos_fail
-    print(QOS_FAIL_MASK.sum(),"qos_fail")
-    print(act[QOS_FAIL_MASK],"qos_fail_c_idx")
-    unique_numbers, counts = np.unique(act[QOS_FAIL_MASK], return_counts=True)
-    result = {int(num): int(count) for num, count in zip(unique_numbers, counts)}
-    print(result)
-    unique_numbers, counts = np.unique(act, return_counts=True)
-    result = {int(num): int(count) for num, count in zip(unique_numbers, counts)}
-    print(result)
-    
-
-
+        # run ns3
+        ns3sys = sim_sys(id=i)
+        ret = ns3sys.step(env=env,agt=agt,sync=True)
+        qos_fail = WiFiNet.evaluate_qos(ret)
+        rwd = 1-qos_fail
+        print(np.abs(qos_fail.astype(int)-QOS_FAIL_MASK.astype(int)).sum(),"diff")
+        QOS_FAIL_MASK = qos_fail
+        print(QOS_FAIL_MASK.sum(),"qos_fail")
+        print(act[QOS_FAIL_MASK],"qos_fail_c_idx")
+        unique_numbers, counts = np.unique(act[QOS_FAIL_MASK], return_counts=True)
+        result = {int(num): int(count) for num, count in zip(unique_numbers, counts)}
+        print(result)
+        unique_numbers, counts = np.unique(act, return_counts=True)
+        result = {int(num): int(count) for num, count in zip(unique_numbers, counts)}
+        print(result)
+        
+        ggm._add_np_log("npe",i,[n_processed_edges],g_step=t)
+        ggm._add_np_log("nf",i,[QOS_FAIL_MASK.sum()],g_step=t)
+        ggm._add_np_log("nc",i,[nc],g_step=t)
+        
 ggm.save_np(LOG_DIR,"final")
