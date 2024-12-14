@@ -84,4 +84,17 @@
       "cinttypes": "cpp",
       "typeinfo": "cpp"
     },
+    "launch": {
+    
+        "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal" // Options: "integratedTerminal" or "externalTerminal"
+        }
+        ],
+        "compounds": []
+    },
   }

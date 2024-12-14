@@ -70,7 +70,7 @@ ggm.eval()
 
 N_TOTAL_STA = 1000
 N_TRAINING_STEP = 200
-N_TUNE_STEP = 5
+N_TUNE_STEP = 11
 
 for t in range(N_TRAINING_STEP):
     env = WiFiNet(seed=GetSeed(),n_sta=N_TOTAL_STA)
