@@ -2,10 +2,6 @@ import numpy as np
 from collections import defaultdict
 from scipy.sparse import coo_matrix, csr_matrix, triu
 
-import numpy as np
-from collections import defaultdict
-from scipy.sparse import coo_matrix, csr_matrix, triu
-
 class LSH:
     def __init__(self, num_bits, num_tables, bits_per_hash):
         self.num_bits = num_bits              # Length of binary vectors
