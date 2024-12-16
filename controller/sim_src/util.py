@@ -284,6 +284,7 @@ class STATS_OBJECT:
         return self.ntimer
 
     def _get_tim(self,tic_id):
+        # return time in us
         for t in self.timers:
             if t[0] == tic_id:
                 tim = t[1]
