@@ -1,7 +1,7 @@
 import numpy as np
 from collections import defaultdict
 from scipy.sparse import coo_matrix, csr_matrix, triu
-
+import pandas as pd
 class LSH:
     def __init__(self, num_bits, num_tables, bits_per_hash):
         self.num_bits = num_bits              # Length of binary vectors
@@ -173,6 +173,71 @@ class LSH:
         # Convert to CSR format for efficient arithmetic and matrix vector operations
         adjacency_matrix = adjacency_matrix.tocsr()
         return adjacency_matrix
+
+    def export_adjacency_matrix_edge_index(self, hamming_threshold=None):
+        """
+        Export the colliding edges as a binary adjacency matrix.
+        Optionally filters pairs based on Hamming distance.
+
+        Parameters:
+            hamming_threshold (int, optional): Maximum Hamming distance to include a pair. 
+                                               If None, all colliding pairs are included.
+
+        Returns:
+            scipy.sparse.csr_matrix: Sparse adjacency matrix of size (N, N).
+        """
+        if self.vectors is None:
+            raise ValueError("Vectors have not been stored. Please call build_hash_tables first.")
+
+        num_vectors = self.num_vectors
+        rows = []
+        cols = []
+
+        vectors = self.vectors  # For easier access
+
+        for t in range(self.num_tables):
+            hash_table = self.hash_tables[t]
+            for vector_ids in hash_table.values():
+                if len(vector_ids) > 1:
+                    # Create all unique pairs of vector IDs within the bucket
+                    vector_ids = np.array(vector_ids)
+                    idx1, idx2 = np.triu_indices(len(vector_ids), k=1)
+                    pair1 = vector_ids[idx1]
+                    pair2 = vector_ids[idx2]
+
+                    if hamming_threshold is not None:
+                        # Compute Hamming distances for all pairs
+                        # XOR the vectors and sum the differing bits
+                        xor = vectors[pair1] != vectors[pair2]
+                        hamming_distances = np.sum(xor, axis=1)
+                        # Filter pairs where Hamming distance is less than the threshold
+                        valid = hamming_distances < hamming_threshold
+                        pair1 = pair1[valid]
+                        pair2 = pair2[valid]
+
+                    # Append to rows and cols
+                    rows.extend(pair1)
+                    cols.extend(pair2)
+
+        if not rows:
+                # No edges to add
+            return np.empty((2, 0), dtype=np.int64)
+        # Convert lists to NumPy arrays
+        rows = np.array(rows)
+        cols = np.array(cols)
+        # Stack as (2, E) array
+        edge_pairs = np.stack((rows, cols), axis=1)
+
+        # Remove duplicate pairs
+        # unique_edge_pairs = np.unique(edge_pairs, axis=0)
+        unique_edge_pairs = pd.DataFrame(edge_pairs).drop_duplicates().values
+        # print(unique_vectors.shape, unique_edge_pairs.shape)
+        # Create symmetric edges by stacking (i, j) and (j, i)
+        symmetric_edges = np.vstack((unique_edge_pairs, unique_edge_pairs[:, ::-1]))
+        symmetric_edges = pd.DataFrame(symmetric_edges).drop_duplicates().values
+        symmetric_edges = symmetric_edges.reshape(-1, 2).T  # Shape (2, E)
+
+        return symmetric_edges.astype(np.int64)
 
     def export_adjacency_matrix_with_mask_direct(self, mask, num_random_bits=4, hamming_threshold=None):
         """
