@@ -80,36 +80,20 @@ for sidx, speed in enumerate([0]):
     
     lsh = LSH(num_bits=30, num_tables=20, bits_per_hash=7)
     adj_col_list = [csr_matrix((N_TOTAL_STA,N_TOTAL_STA)) for _ in range(10)]
-    
+
+
     tic_tot = ggm._get_tic()
     agt = agt_for_training()
             
     # get states
     b = env.get_sta_states()
     S_loss, A_loss = env.get_sta_to_associated_ap_loss()
+    edge_attr, edge_index = agt.export_all_edges(S_loss)
 
     # tokenize sta states
     tic_tok = ggm._get_tic()
     l = tk_model.tokenize(b)
     tim_tok = ggm._get_tim(tic_tok)
-
-    # generate hashing codes
-    tic_dhf = ggm._get_tic()
-    hc = sp_model.get_output_np(l)
-    hc = sp_model.binarize_hard_code(hc)
-    tim_dhf = ggm._get_tim(tic_dhf)
-
-
-    # bucketing
-    tic_tab = ggm._get_tic()
-    lsh.build_hash_tables(hc)
-    adj_tab = lsh.export_adjacency_matrix()
-    adj_col = sum(adj_col_list, csr_matrix((N_TOTAL_STA, N_TOTAL_STA)))
-    adj = adj_tab + adj_col
-    adj.eliminate_zeros()
-    edge_index = lsh.export_all_edges_of_sparse_matrix(adj)
-    tim_tab = ggm._get_tim(tic_tab)
-    
     
     # predict o
     tic_pdt = ggm._get_tic()
@@ -117,10 +101,8 @@ for sidx, speed in enumerate([0]):
     oh = ph_model.get_output_np_edge_weight(l,edge_index)
     tim_pdt = ggm._get_tim(tic_pdt)
 
-
     # generate edge
     tic_ggm = ggm._get_tic()
-    edge_attr = S_loss[edge_index[0], edge_index[1]]
     edge_attr = np.stack([edge_attr, oc, oh], axis=-1)  # [num_edges, in_dim_edge]
     edge_value = ggm.get_output_np_edge_weight(A_loss, edge_attr, edge_index)
     adj = agt.construct_sparse_adjacency_matrix(edge_index,edge_value,env.n_sta)
@@ -148,14 +130,11 @@ for sidx, speed in enumerate([0]):
     ggm._printalltime(f"tim_tot:{tim_tot}, np:{WiFiNet.N_PACKETS}")
 
     ggm._add_np_log("tim_tok",sidx,[tim_tok,speed])
-    ggm._add_np_log("tim_dhf",sidx,[tim_dhf,speed])
-    ggm._add_np_log("tim_tab",sidx,[tim_tab,speed])
     ggm._add_np_log("tim_pdt",sidx,[tim_pdt,speed])
     ggm._add_np_log("tim_ggm",sidx,[tim_ggm,speed])
     ggm._add_np_log("tim_col",sidx,[tim_col,speed])
     ggm._add_np_log("tim_tot",sidx,[tim_tot,speed])
 
-    
     break
         
 

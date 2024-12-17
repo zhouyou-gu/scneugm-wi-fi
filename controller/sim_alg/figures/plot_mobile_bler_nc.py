@@ -96,7 +96,7 @@ for idx, data_file in enumerate(path):
 lines = []
 
 ylabels = [r'$\mathbb{E}[r_k]$',r'$\mathbb{E}[Z]$']
-markers = ['x','o','+','s','d']
+markers = ['x','o','s','+','d']
 
 for i in range(2):
     for j in range(3):
@@ -105,7 +105,7 @@ for i in range(2):
     axs[i].set_ylabel(ylabels[i])
 
     if i == 0:
-        axs[i].set_xlabel(r'Mobility of STAs (m/s)')
+        axs[i].set_xlabel(r'Mobility of STAs (meter/second)')
         axs[i].set_xticks(np.arange(0,11))      
         axs[i].set_xticklabels(np.arange(0,11)/2)
     else:
