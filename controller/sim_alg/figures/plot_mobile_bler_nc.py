@@ -6,7 +6,7 @@ from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT
 
 FONT_SIZE = 9
 fig_width_px = 350
-fig_height_px = 350
+fig_height_px = 275
 dpi = 100  # Typical screen DPI, adjust if necessary
 fig_width_in = fig_width_px / dpi
 fig_height_in = fig_height_px / dpi
@@ -27,7 +27,7 @@ def moving_average(data, window_size=20):
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["ES (Proposed)","PG","DPG"]
+data_name_list = ["FT","No-FT","ALLE"]
 
 # Create subplots
 fig, axs = plt.subplots(2, 1)
@@ -44,9 +44,9 @@ folder = [
 data_list = []
 
 path = []
-path.append(os.path.join(folder[0],"ES_GGM.tim_us.final.txt"))
-path.append(os.path.join(folder[1],"ES_GGM.tim_us.final.txt"))
-path.append(os.path.join(folder[2],"ES_GGM.tim_us.final.txt"))
+path.append(os.path.join(folder[0],"ES_GGM.bler.final.txt"))
+path.append(os.path.join(folder[1],"ES_GGM.bler.final.txt"))
+path.append(os.path.join(folder[2],"ES_GGM.bler.final.txt"))
 for idx, data_file in enumerate(path):
     if not os.path.exists(data_file):
         raise FileNotFoundError(f"Data file not found: {data_file}")
@@ -66,12 +66,12 @@ for idx, data_file in enumerate(path):
 
     # Step 5: Calculate the mean of x for each unique y
     mean_x = sum_x / count
-    data_list.append(mean_x/1000)
+    data_list.append(np.log10(mean_x))
 
 path = []
-path.append(os.path.join(folder[0],"ES_GGM.np.final.txt"))
-path.append(os.path.join(folder[1],"ES_GGM.np.final.txt"))
-path.append(os.path.join(folder[2],"ES_GGM.np.final.txt"))
+path.append(os.path.join(folder[0],"ES_GGM.nc.final.txt"))
+path.append(os.path.join(folder[1],"ES_GGM.nc.final.txt"))
+path.append(os.path.join(folder[2],"ES_GGM.nc.final.txt"))
 for idx, data_file in enumerate(path):
     if not os.path.exists(data_file):
         raise FileNotFoundError(f"Data file not found: {data_file}")
@@ -113,19 +113,18 @@ for i in range(2):
         axs[i].set_xticklabels([])
 
     if i == 0:
-        axs[i].set_ylim(0, 500)
-        axs[i].set_yticks([0,250,500])      
+        axs[i].set_ylim(-3.5, -1.5)
+        axs[i].set_yticks([-3,-2])    
+        axs[i].set_yticklabels([r'$10^{-3}$',r'$10^{-2}$'])    
 
     if i == 1:
         axs[i].set_ylim(0, 50)
-        axs[i].set_yticks([0,25,50])  
-
+        axs[i].set_yticks([0,25,50])      
 
     axs[i].set_position([0.175, 0.15+i*0.4, 0.75, 0.35])
     axs[i].grid(True)
 
 fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.175, 0.905, 0.75, 0.1), ncol = 3 , borderaxespad=0.1,handlelength=1.5,fancybox=True, framealpha=1,mode='expand' )
-
 
 
 # Save the figure as a PDF
