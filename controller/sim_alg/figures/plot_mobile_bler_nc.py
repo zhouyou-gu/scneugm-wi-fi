@@ -27,7 +27,7 @@ def moving_average(data, window_size=20):
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["FT","No-FT","ALLE"]
+data_name_list = ["GGM-B","No-Comb","GGM-A"]
 
 # Create subplots
 fig, axs = plt.subplots(2, 1)
@@ -67,6 +67,8 @@ for idx, data_file in enumerate(path):
     # Step 5: Calculate the mean of x for each unique y
     mean_x = sum_x / count
     data_list.append(mean_x)
+    print(mean_x)
+
 
 path = []
 path.append(os.path.join(folder[0],"ES_GGM.nc.final.txt"))

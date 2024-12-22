@@ -60,7 +60,7 @@ vmax = max(data_array.max() for data_array in data_arrays)
 for i in range(3):
     im = axs[i].imshow(data_arrays[i], cmap='viridis', aspect='auto', vmin=vmin, vmax=vmax)
     axs[i].set_title(data_name_list[i])
-    axs[i].set_xlabel(r'$\Upsilon$')
+    axs[i].set_xlabel(r'$\Psi$')
 
 
 
@@ -72,7 +72,7 @@ for i in range(3):
     
     # Set x and y labels
     if i == 0:
-        axs[i].set_ylabel(r'$\Psi$')
+        axs[i].set_ylabel(r'$\Upsilon$')
         axs[i].set_yticks(np.arange(4, num_rows, tick_step))
         axs[i].set_yticklabels(np.arange(4, num_rows, tick_step)+1)
     else:

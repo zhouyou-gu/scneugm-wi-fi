@@ -27,7 +27,7 @@ def moving_average(data, window_size=100):
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = [r"DHF",r"No-DHF",r"CHG",r"IFG"]
+data_name_list = [r"GGM-B",r"GGM-A",r"CHG",r"IFG"]
 
 # Create subplots
 fig, axs = plt.subplots(1, 2)
@@ -93,7 +93,7 @@ data_list_g.append(nf)
 
 lines = []
 
-xlabels = [r'$Z$',r'$\Sigma_{k}  \mathbf{1}_{\{r_k < \hat{r}\}}/K$']
+xlabels = [r'$Z$',r'$\mathbb{E}[\mathbf{1}_{\{r_k < \hat{r}\}}]$']
 
 markers = ['x','o','+','s','d']
 
@@ -127,7 +127,7 @@ for i in range(2):
     axs[i].grid(True)
 
 # Add a legend
-fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.175, 0.875, 0.75, 0.085), ncol = 4 , borderaxespad=0.1,handlelength=1.2,fancybox=True, framealpha=1,mode='expand' )
+fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.175, 0.875, 0.75, 0.085), ncol = 4 , borderaxespad=0.1,handletextpad=0.4,handlelength=1.2,fancybox=True, framealpha=1,mode='expand' )
 # axs[0].legend(fontsize=8, loc='lower left', bbox_to_anchor=(0, 1.02, 5,0.1), ncol=3,borderaxespad=0.)
 # plt.subplots_adjust(left=0.175, right=0.95,bottom=0.175,top=0.95)
 

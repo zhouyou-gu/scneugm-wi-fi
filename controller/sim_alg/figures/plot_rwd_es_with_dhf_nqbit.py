@@ -72,7 +72,7 @@ axs.set_xlim(-0.5, num_cols - 0.5)
 axs.set_ylim(num_rows - 0.5, -0.5)  # Invert y-axis if you want row 0 at the top
 
 # axs[0].set_ylabel(r'Number of iterations')
-axs.set_ylabel(r'$\Upsilon$')
+axs.set_ylabel(r'$\Psi$')
 
 
 cbar_ax = fig.add_axes([0.875, 0.265, 0.02, 0.675])  # Position for the colorbar

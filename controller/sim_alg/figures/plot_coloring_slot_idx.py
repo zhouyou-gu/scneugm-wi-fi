@@ -27,7 +27,7 @@ def moving_average(data, window_size=20):
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["STAs","QoS fails"]
+data_name_list = ["STAs","QoS Violations"]
 
 # Create subplots
 fig, axs = plt.subplots(1, 1)
@@ -59,13 +59,13 @@ width = 0.35  # Bar width
 
 b = axs.bar(indices-width/2, data_list[0], width, color = "deepskyblue", label='Array 1')
 lines.append(b)
-axs.set_ylabel('Amount')
+axs.set_ylabel('Number')
 axs.set_ylim(0,60)
 axs.set_yticks([0,15,30,45,60])
 axs.set_xlim(-2,32)
 raxs = axs.twinx()
 b = raxs.bar(indices + width/2, data_list[1], width, color= "tomato", label='Array 2')
-raxs.set_ylabel('Amount')
+raxs.set_ylabel('Number')
 lines.append(b)
 
 axs.set_position([0.175, 0.2, 0.625, 0.625])

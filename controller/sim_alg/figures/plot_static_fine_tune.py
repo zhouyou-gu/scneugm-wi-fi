@@ -55,7 +55,7 @@ for i in range(11):
     
 lines = []
 
-xlabels = [r'$Z$',r'$\Sigma_{k}  \mathbf{1}_{\{r_k < \hat{r}\}}/K$']
+xlabels = [r'$Z$',r'$\mathbb{E}[\mathbf{1}_{\{r_k < \hat{r}\}}]$']
 
 markers = ['x','o','+','s','d']
 
