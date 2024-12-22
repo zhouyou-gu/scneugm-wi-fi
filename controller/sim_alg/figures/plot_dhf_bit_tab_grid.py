@@ -25,7 +25,7 @@ plt.rc('legend', fontsize=FONT_SIZE)  # Font size for legends
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["Edge Count","Recall","Efficiency"]
+data_name_list = ["Pair Count","Recall","Efficiency"]
 
 # Create subplots
 fig, axs = plt.subplots(1, 3)

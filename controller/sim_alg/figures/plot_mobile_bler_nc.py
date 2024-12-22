@@ -66,7 +66,7 @@ for idx, data_file in enumerate(path):
 
     # Step 5: Calculate the mean of x for each unique y
     mean_x = sum_x / count
-    data_list.append(np.log10(mean_x))
+    data_list.append(mean_x)
 
 path = []
 path.append(os.path.join(folder[0],"ES_GGM.nc.final.txt"))
@@ -95,7 +95,7 @@ for idx, data_file in enumerate(path):
 
 lines = []
 
-ylabels = [r'$\mathbb{E}[r_k]$',r'$\mathbb{E}[Z]$']
+ylabels = [r'$\mathbb{E}[1-r_k]$',r'$\mathbb{E}[Z]$']
 markers = ['x','o','s','+','d']
 
 for i in range(2):
@@ -113,9 +113,9 @@ for i in range(2):
         axs[i].set_xticklabels([])
 
     if i == 0:
-        axs[i].set_ylim(-3.5, -1.5)
-        axs[i].set_yticks([-3,-2])    
-        axs[i].set_yticklabels([r'$10^{-3}$',r'$10^{-2}$'])    
+        axs[i].set_ylim(0, 0.02)
+        axs[i].set_yticks([0,0.01,0.02])    
+        # axs[i].set_yticklabels([r'$10^{-3}$',r'$10^{-2}$'])    
 
     if i == 1:
         axs[i].set_ylim(0, 50)

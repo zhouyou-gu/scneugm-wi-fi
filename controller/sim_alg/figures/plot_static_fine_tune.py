@@ -79,8 +79,8 @@ for i in range(2):
         axs[i].set_ylabel('')      # Remove y-axis label
 
     if i == 0:
-        axs[i].set_xlim(20, 40)
-        axs[i].set_xticks([20,30,40])     
+        axs[i].set_xlim(20, 50)
+        axs[i].set_xticks([20,30,40,50])     
     if i == 1:
         axs[i].set_xlim(0, 0.04)
         axs[i].set_xticks([0,0.02,0.04])      

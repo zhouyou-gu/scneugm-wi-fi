@@ -20,14 +20,14 @@ plt.rc('xtick', labelsize=FONT_SIZE)  # Font size of the tick labels
 plt.rc('ytick', labelsize=FONT_SIZE)  # Font size of the tick labels
 plt.rc('legend', fontsize=FONT_SIZE)  # Font size for legends
 
-def moving_average(data, window_size=20):
+def moving_average(data, window_size=40):
     return np.convolve(data, np.ones(window_size)/window_size, mode='full')
 
 
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["ES (Proposed)","PG","DPG"]
+data_name_list = ["ES","PG","DPG"]
 
 # Create subplots
 fig, axs = plt.subplots(3, 1)
@@ -36,9 +36,9 @@ fig.set_size_inches(fig_width_in, fig_height_in)
 
 # Define the paths to your three data files
 folder = [
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-December-08-20-48-05-ail"),
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_pg/train_pg-2024-December-08-21-51-27-ail"),
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_dpg/train_dpg-2024-December-08-21-56-56-ail"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-December-18-16-23-40-ail"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_pg/train_pg-2024-December-18-16-19-42-ail"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_dpg/train_dpg-2024-December-18-16-27-56-ail"),
 ]
 
 data_list = []
@@ -82,10 +82,10 @@ for idx, data_file in enumerate(path):
 
 lines = []
 
-ylabels = [r'$\dot{R}\geq 0$',r'$Z^*/Z$',r'$r_k\geq\hat{r}$',]
+ylabels = [r'$\dot{R}\geq 0$',r'$Z^*/Z$',r'$r_k<\hat{r}$',]
 for i in range(3):
     for j in range(3):
-        line, = axs[i].plot(data_list[j+i*3],linewidth=1,markerfacecolor='none')
+        line, = axs[i].plot(data_list[j+i*3],linewidth=1.25,markerfacecolor='none')
         lines.append(line)
     axs[i].set_ylabel(ylabels[i])
 
@@ -103,7 +103,7 @@ for i in range(3):
 
     if i == 1:
         axs[i].set_ylim(-0.2, 4)
-        axs[i].set_yticks([0,2,4])      # Remove y-axis ticks
+        axs[i].set_yticks([0,1,2,3,4])      # Remove y-axis ticks
 
     if i == 2:
         axs[i].set_ylim(-0.02, 0.4)

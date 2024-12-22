@@ -33,10 +33,10 @@ fig, axs = plt.subplots(3, 1)
 fig.set_size_inches(fig_width_in, fig_height_in)
 
 # Define the paths to your three data files
-data_files = [
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_dpg/train_dpg-2024-December-01-10-25-24-ail/PG_GGM.edge_value_raw.final.txt"),
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_pg/train_pg-2024-December-01-10-34-25-ail/PG_GGM.edge_value_raw.final.txt"),
-    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-December-01-10-31-20-ail/ES_GGM.edge_value_raw.final.txt") 
+folder = [
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_es/train_es-2024-December-18-16-23-40-ail/ES_GGM.edge_value_raw.final.txt"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_pg/train_pg-2024-December-18-16-19-42-ail/PG_GGM.edge_value_raw.final.txt"),
+    os.path.join(get_controller_path(), "sim_alg/train_and_test_es_vs_pg_dpg/log-train_dpg/train_dpg-2024-December-18-16-27-56-ail/PG_GGM.edge_value_raw.final.txt"),
 ]
 
 # Initialize a list to hold your distribution arrays
@@ -48,7 +48,7 @@ bins = np.linspace(0, 1, num_bins + 1)  # e.g., [0.0, 0.1, 0.2, ..., 1.0]
 bin_centers = (bins[:-1] + bins[1:]) / 2  # For labeling if needed
 
 # Load and process the data
-for idx, data_file in enumerate(data_files):
+for idx, data_file in enumerate(folder):
     # Check if the file exists
     if not os.path.exists(data_file):
         raise FileNotFoundError(f"Data file not found: {data_file}")

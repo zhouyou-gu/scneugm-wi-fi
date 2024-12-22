@@ -117,11 +117,11 @@ for i in range(2):
 
     if i == 0:
         axs[i].set_xlim(20, 50)
-        axs[i].set_xticks([20,30,40])     
+        axs[i].set_xticks([20,30,40,50])     
     if i == 1:
-        axs[i].set_xlim(0, 0.02)
-        axs[i].set_xticks([0,0.01,0.02])      
-        axs[i].set_xticklabels(['0','0.01','0.02'])
+        axs[i].set_xlim(0, 0.04)
+        axs[i].set_xticks([0,0.02,0.04])      
+        axs[i].set_xticklabels(['0','0.02','0.04'])
 
     axs[i].set_position([0.175+0.425*i, 0.195, 0.325, 0.665])
     axs[i].grid(True)
