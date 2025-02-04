@@ -27,7 +27,7 @@ def moving_average(data, window_size=20):
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["GGM-A","GGM-B"]
+data_name_list = ["NGM-A","NGM-B"]
 
 # Create subplots
 fig, axs = plt.subplots(1, 1)
@@ -90,7 +90,7 @@ for i in range(6):
 axs.set_position([0.175, 0.2, 0.75, 0.55])
 axs.grid(True,axis='x')
 axs.set_xlabel("Processing time (millisecond)")
-box_names = ["Tok.", "Hsh.", "Buc.", "Pre.", "EG", "Col."]
+box_names = ["Emb.", "Hsh.", "Buc.", "Pre.", "EG", "Col."]
 fig.legend(lines, box_names ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.175, 0.775, 0.75, 0.1), ncol = 3 , borderaxespad=0.1,handlelength=1.75,fancybox=True, framealpha=1,mode='expand' )
 
 

@@ -63,14 +63,24 @@ axs.set_ylabel('Number')
 axs.set_ylim(0,60)
 axs.set_yticks([0,15,30,45,60])
 axs.set_xlim(-2,32)
+axs.tick_params(axis='y', colors='deepskyblue')
+axs.yaxis.label.set_color('deepskyblue')
+axs.spines['left'].set_color('deepskyblue')
+
 raxs = axs.twinx()
 b = raxs.bar(indices + width/2, data_list[1], width, color= "tomato", label='Array 2')
 raxs.set_ylabel('Number')
 lines.append(b)
+raxs.tick_params(axis='y', colors='tomato')
+raxs.yaxis.label.set_color('tomato')
+raxs.spines['right'].set_color('tomato')
 
 axs.set_position([0.175, 0.2, 0.625, 0.625])
 axs.grid(True)
 axs.set_xlabel("Slot indices")
+
+axs.spines['right'].set_visible(False)
+raxs.spines['left'].set_visible(False)
 
 fig.legend([lines[0],lines[1]], data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.175, 0.85, 0.625, 0.1), ncol = 3 , borderaxespad=0.1,handlelength=1.5,fancybox=True, framealpha=1,mode='expand' )
 

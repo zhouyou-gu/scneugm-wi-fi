@@ -27,7 +27,7 @@ def moving_average(data, window_size=100):
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["Adp-CL","Lin-CL","No-CL"]
+data_name_list = ["Adp-B","Lin-B","No-B"]
 
 # Create subplots
 fig, axs = plt.subplots(3, 1)
@@ -89,7 +89,7 @@ for idx, data_file in enumerate(path):
 
 lines = []
 
-ylabels = [r'$\dot{R}\geq 0$',r'Time (mins)',r'$K$',]
+ylabels = [r'$\dot{R}\geq 0$',r'Time (mins)',r"$K'$",]
 for i in range(3):
     for j in range(3):
         line, = axs[i].plot(data_list[j+i*3],linewidth=1.5,markerfacecolor='none')
