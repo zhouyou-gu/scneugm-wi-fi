@@ -98,3 +98,6 @@ All Results in the paper can be reproduced using the scripts in [controller/sim_
 
 The terminology in the codes and the paper are slightly different. Some mapping between the variables in codes and the terms in the paper are listed as follows. GGM<=>Neural Graph Modeling, Tokenizer<=>State Embedding, Sparser<=>Deep Hashing Function.
 
+## Recommended Development Setup
+
+Clone the repo and its submodule; Install the dependency; Open the repo using vscode, where [.vscode](.vscode) contains the python path configurations, so the scripts can be simply clicked to be run. Note that on MAC OS, the env parameters still need to be exported as above when compiling the NS-3.
