@@ -1,12 +1,14 @@
 # SPARSE-GGM-WI-FI
 
-### Installation
+## Installation
 Install [Pytorch](https://pytorch.org/get-started/locally/) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) and [NVIDIA Drivers](https://ubuntu.com/server/docs/nvidia-drivers-installation)
 
 Install python packages
 ```
-sudo pip3 install scipy
+pip3 install -r requirements.txt
 ```
+
+### NS-3 Related Installation
 
 On Ubuntu (or WSL on Windows), install the ns3 and ns3gym dependency as (double check "protoc --version" and make the version match the python protobuf version)
 ```bash
@@ -22,13 +24,22 @@ sudo pip3 install pyzmq
 sudo pip3 install protobuf==3.20.*
 ```
 
-On MAC, install the ns3 and ns3gym dependency as (env parameters are needed to be re-exported for a new terminal)
+On MAC, install the ns3 and ns3gym dependency as (env parameters are needed to be re-exported for a new terminal).
 ```bash
 brew install cmake gcc pkg-config protobuf protobuf-c ninja zeromq cppzmq ccache
 
 ls -l /opt/homebrew/lib/libprotobuf.dylib
 ls -l /opt/homebrew/lib/libzmq.dylib
 
+sudo pip3 install gym
+sudo pip3 install pyzmq
+sudo pip3 install protobuf
+```
+
+
+Before the compilation of ns-3, MAC OS needs the following env parameters.
+
+```bash
 export CPATH="/opt/homebrew/include:$CPATH"
 export CPLUS_INCLUDE_PATH="/opt/homebrew/include:$CPLUS_INCLUDE_PATH"
 export LDFLAGS="-L/opt/homebrew/lib $LDFLAGS"
@@ -36,12 +47,7 @@ export CPPFLAGS="-I/opt/homebrew/include $CPPFLAGS"
 export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
 export CMAKE_PREFIX_PATH="/opt/homebrew:$CMAKE_PREFIX_PATH"
 export LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH"
-
-sudo pip3 install gym
-sudo pip3 install pyzmq
-sudo pip3 install protobuf
 ```
-
 
 <span style="color:red">**If the modification on ns-3 submodule is needed, ensure that the submodule is checked out to one of the branch other than a detached head**</span>.
 

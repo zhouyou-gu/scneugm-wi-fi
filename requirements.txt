@@ -1,0 +1,8 @@
+gym
+matplotlib
+networkx
+numpy
+pandas
+protobuf==5.28.3
+pyzmq
+scipy
