@@ -1,11 +1,8 @@
-# ScNeuGM-WI-FI
+<h1 align="center">✨ScNeuGM-WI-FI✨</h1>
 
+Source Codes for our paper, "[ScNeuGM: Scalable Neural Graph Modeling for Coloring-Based Contention and Interference Management in Wi-Fi 7](https://arxiv.org/pdf/2502.03300)," authored by Zhouyou Gu, Jihong Park, Jinho Choi.
 ![system](contention_and_interference.png)
-
-
-
-Source Codes for our paper, "[ScNeuGM: Scalable Neural Graph Modeling for Coloring-Based Contention and Interference Management in Wi-Fi 7](https://arxiv.org/pdf/2502.03300)." Reference:
-
+Reference
 ```bibtex
 @article{gu2025scneugm,
   title={ScNeuGM: Scalable Neural Graph Modeling for Coloring-Based Contention and Interference Management in Wi-Fi 7},
@@ -16,7 +13,7 @@ Source Codes for our paper, "[ScNeuGM: Scalable Neural Graph Modeling for Colori
 ```
 
 ## Installation
-Clone this repo and run the following to fetch the [NS-3 codes](https://github.com/zhouyou-gu/ns-3-dev-ac-grl-wi-fi.git) for this project.
+Clone this repo and run the following to fetch the [NS-3 codes](https://github.com/zhouyou-gu/ns-3-dev-ac-grl-wi-fi/tree/ns3-sparse-wi-fi) for this project.
 ```bash
 git submodule update --init --recursive
 ```
@@ -98,3 +95,6 @@ PYTHONPATH=./ python3 util_script/install_ns3gym.py
 
 ## Reproducing Results in the Paper
 All Results in the paper can be reproduced using the scripts in [controller/sim_alg](controller/sim_alg)
+
+The terminology in the codes and the paper are slightly different. Some mapping between the variables in codes and the terms in the paper are listed as follows. GGM<=>Neural Graph Modeling, Tokenizer<=>State Embedding, Sparser<=>Deep Hashing Function.
+
