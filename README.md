@@ -1,4 +1,4 @@
-<h1 align="center">✨ScNeuGM-WI-FI✨</h1>
+<h1 align="center">✨ScNeuGM-Wi-Fi✨</h1>
 
 Source Codes for our paper, "[ScNeuGM: Scalable Neural Graph Modeling for Coloring-Based Contention and Interference Management in Wi-Fi 7](https://arxiv.org/pdf/2502.03300)," authored by Zhouyou Gu, Jihong Park, Jinho Choi.
 ![system](contention_and_interference.png)
