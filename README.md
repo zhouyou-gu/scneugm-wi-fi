@@ -45,7 +45,7 @@ ls -l /opt/homebrew/lib/libprotobuf.dylib
 ls -l /opt/homebrew/lib/libzmq.dylib
 ```
 
-<mark>If the modification on ns-3 submodule is needed, ensure that the submodule is checked out to a branch other than a detached head; otherwise, the modification will be tracked by git.<mark>
+<mark>When modifying ns-3 submodule, ensure that the submodule is checked out to a branch other than a detached head; otherwise, the modification will not be tracked by git.<mark>
 
 ### Compiling NS-3
 
