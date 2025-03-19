@@ -100,4 +100,4 @@ The terminology in the codes and the paper are slightly different. Some mapping 
 
 ## Recommended Development Setup
 
-Clone the repo and its submodule; Install the dependency; Open the repo using vscode, where [.vscode](.vscode) contains the python path configurations, so the scripts can be simply clicked to be run. Note that on MAC OS, the env parameters still need to be exported as above when compiling the NS-3.
+Clone the repo and its submodule; Install the dependency; Open the repo using vscode, where [.vscode](.vscode) contains the python path configurations, so the scripts can be simply clicked to be run. Note that on MAC OS, the env parameters still need to be exported in the vscode terminal as mentioned above when compiling the NS-3.
