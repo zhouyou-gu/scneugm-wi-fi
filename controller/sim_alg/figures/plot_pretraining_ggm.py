@@ -23,7 +23,7 @@ plt.rc('legend', fontsize=FONT_SIZE)  # Font size for legends
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["STNN","PCNN","PHNN"]
+data_name_list = [r"SENN $\theta_{\text{SE}}^{\mu}$",r"PCNN $\theta_{\text{PC}}^{\mu}$",r"PHNN $\theta_{\text{PH}}^{\mu}$"]
 
 log_path_list = []
 log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_tokenizer/selected_nn/tokenizer_base.loss.final.txt"))
@@ -66,7 +66,7 @@ axs.set_ylim(0, 1.05)
 
 
 # Add a legend
-fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.65, 0.5, 0.2, 0.1),ncol = 1 ,borderaxespad=0.1,handlelength=1.5,fancybox=True, framealpha=1)
+fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.55, 0.45, 0.2, 0.1),ncol = 1 ,borderaxespad=0.1,handlelength=1.5,fancybox=True, framealpha=1)
 # axs[0].legend(fontsize=8, loc='lower left', bbox_to_anchor=(0, 1.02, 5,0.1), ncol=3,borderaxespad=0.)
 # plt.subplots_adjust(left=0.175, right=0.95,bottom=0.175,top=0.95)
 
