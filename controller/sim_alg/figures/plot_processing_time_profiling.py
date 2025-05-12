@@ -27,7 +27,7 @@ def moving_average(data, window_size=20):
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["NGM-A","NGM-B"]
+data_name_list = ["IGL-A","IGL-B"]
 
 # Create subplots
 fig, axs = plt.subplots(1, 1)

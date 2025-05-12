@@ -89,7 +89,7 @@ for idx, data_file in enumerate(path):
 
 lines = []
 
-ylabels = [r'$\dot{R}\geq 0$',r'Time (mins)',r"$K'$",]
+ylabels = [r'$\mathbf{1}_{\{R\geq 0\}}$ or $\Omega$',r'Time (mins)',r"$K'$",]
 for i in range(3):
     for j in range(3):
         line, = axs[i].plot(data_list[j+i*3],linewidth=1.5,markerfacecolor='none')

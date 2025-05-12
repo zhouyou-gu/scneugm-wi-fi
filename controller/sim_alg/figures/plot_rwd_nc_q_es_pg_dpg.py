@@ -82,7 +82,7 @@ for idx, data_file in enumerate(path):
 
 lines = []
 
-ylabels = [r'$\dot{R}\geq 0$',r'$Z^*/Z$',r'$r_k<\hat{r}$',]
+ylabels = [r'$\mathbf{1}_{\{R\geq 0\}}$ or $\Omega$',r'$\tilde{Z}^*/Z$',r'$r_k<\hat{r}$',]
 for i in range(3):
     for j in range(3):
         line, = axs[i].plot(data_list[j+i*3],linewidth=1.25,markerfacecolor='none')
