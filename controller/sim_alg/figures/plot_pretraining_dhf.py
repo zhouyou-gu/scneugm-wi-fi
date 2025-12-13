@@ -27,7 +27,7 @@ def moving_average(data, window_size=20):
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = ["Simi","Corr"]
+data_name_list = ["Simi","Corr","Total"]
 
 log_path_list = []
 # log_path_list.append(os.path.join(get_controller_path(),"sim_alg/train_tokenizer/selected_nn/tokenizer_base.loss.final.txt"))
@@ -44,10 +44,14 @@ lines = []
 for t in range(len(log_path_list)):
     data_file = os.path.join(log_path_list[t])
     data = np.genfromtxt(data_file, delimiter=',')
+
     line, = axs.plot(moving_average(data[:,4]/data[0,4]),linewidth=1,markerfacecolor='none')
     lines.append(line)
     line, = axs.plot(moving_average(data[:,5]/data[0,5]),linewidth=1,markerfacecolor='none')
     lines.append(line)
+    line, = axs.plot((moving_average(data[:,4]/data[0,4])+0.2*moving_average(data[:,5]/data[0,5]))/1.2,linewidth=1,markerfacecolor='none')
+    lines.append(line)
+
     # lines.append(line)
 
 axs.set_position([0.175, 0.265, 0.775, 0.675])
@@ -76,7 +80,7 @@ axs.set_ylim(0.6, 1.05)
 
 
 # Add a legend
-fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.2, 0.3, 0.2, 0.1),ncol = 1 ,borderaxespad=0.1,handlelength=1.5,fancybox=True, framealpha=1)
+fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.2, 0.275, 0.2, 0.1), ncol = 1 ,borderaxespad=0.1,handlelength=1.5,fancybox=True, framealpha=1)
 # axs[0].legend(fontsize=8, loc='lower left', bbox_to_anchor=(0, 1.02, 5,0.1), ncol=3,borderaxespad=0.)
 # plt.subplots_adjust(left=0.175, right=0.95,bottom=0.175,top=0.95)
 

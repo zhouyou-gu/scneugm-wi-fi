@@ -322,7 +322,28 @@ class WiFiNet(InterferenceHelper):
 
 
 if __name__ == "__main__":
+    # given a grid of K*K cells, assign a color to each cell such that no adjacent cells have the same color.
+    # using 3 colors to color the grid.
+    K=10
+    cell_color = np.zeros((K,K))
+    for i in range(K):
+        for j in range(K):
+            cell_color[i][j] = (i+j)%3
+    print(cell_color)
+    exit(0)
     test_obj = WiFiNet()
+    
+    # filter out all STAs in cell_color with color 0
+    cell_color_flat = cell_color.ravel()
+    filter = np.zeros(test_obj.n_sta)
+    for i in range(test_obj.n_sta):
+        sta_loc = test_obj.sta_locs[i]
+        cell_x = int(sta_loc[0] // test_obj.cell_edge)
+        cell_y = int(sta_loc[1] // test_obj.cell_edge)
+        cell_index = cell_x * test_obj.cell_size + cell_y
+        if cell_color_flat[cell_index] != 0:
+            filter[i] = 1
+    
     test_obj.apply_sta_filter(np.random.randint(0, 2, size=test_obj.n_sta))
     exit(0)
 
