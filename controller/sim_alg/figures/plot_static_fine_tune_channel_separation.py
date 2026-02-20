@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT
 
 FONT_SIZE = 9
-fig_width_px = 400
+fig_width_px = 375
 fig_height_px = 300
 dpi = 100  # Typical screen DPI, adjust if necessary
 fig_width_in = fig_width_px / dpi
