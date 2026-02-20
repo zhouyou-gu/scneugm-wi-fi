@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from sim_src.util import GET_LOG_PATH_FOR_SIM_SCRIPT
 
 FONT_SIZE = 9
-fig_width_px = 350
-fig_height_px = 225
+fig_width_px = 400
+fig_height_px = 300
 dpi = 100  # Typical screen DPI, adjust if necessary
 fig_width_in = fig_width_px / dpi
 fig_height_in = fig_height_px / dpi
@@ -27,7 +27,7 @@ def moving_average(data, window_size=100):
 from working_dir_path import get_controller_path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-data_name_list = [r"$N_{\text{CH}}$=1",r"$N_{\text{CH}}$=2",r"$N_{\text{CH}}$=3",r"$N_{\text{CH}}$=4"]
+data_name_list = [r"IGL, $N_{\text{CH}}$=1",r"IGL, $N_{\text{CH}}$=2",r"IGL, $N_{\text{CH}}$=3",r"IGL, $N_{\text{CH}}$=4",r"CHG, $N_{\text{CH}}$=1",r"CHG, $N_{\text{CH}}$=2",r"CHG, $N_{\text{CH}}$=3",r"CHG, $N_{\text{CH}}$=4"]
 
 # Create subplots
 fig, axs = plt.subplots(1, 2)
@@ -40,9 +40,14 @@ folder_2 = os.path.join(get_controller_path(), "sim_alg/test_online/log-test_onl
 folder_3 = os.path.join(get_controller_path(), "sim_alg/test_online/log-test_online_static_channel_filtering_3/test_online_static_channel_filtering_3-2025-December-12-21-01-37-ail")
 folder_4 = os.path.join(get_controller_path(), "sim_alg/test_online/log-test_online_static_channel_filtering_4/test_online_static_channel_filtering_4-2025-December-12-22-03-22-ail")
 
+folder_g1 = os.path.join(get_controller_path(), "sim_alg/test_online/log-test_online_static_channel_filtering_1_hg_chg/test_online_static_channel_filtering_1_hg_chg-2026-February-20-15-20-07-ail")
+folder_g2 = os.path.join(get_controller_path(), "sim_alg/test_online/log-test_online_static_channel_filtering_2_hg_chg/test_online_static_channel_filtering_2_hg_chg-2026-February-19-15-56-27-ail")
+folder_g3 = os.path.join(get_controller_path(), "sim_alg/test_online/log-test_online_static_channel_filtering_3_hg_chg/test_online_static_channel_filtering_3_hg_chg-2026-February-19-16-32-20-ail")
+folder_g4 = os.path.join(get_controller_path(), "sim_alg/test_online/log-test_online_static_channel_filtering_4_hg_chg/test_online_static_channel_filtering_4_hg_chg-2026-February-19-17-00-26-ail")
+
 data_list = []
 
-ne1 = np.genfromtxt(os.path.join(folder_1,"ES_GGM.nc.final.txt"), delimiter=',')[:,3:].squeeze()
+nc1 = np.genfromtxt(os.path.join(folder_1,"ES_GGM.nc.final.txt"), delimiter=',')[:,3:].squeeze()
 nc2 = np.genfromtxt(os.path.join(folder_2,"ES_GGM.nc.final.txt"), delimiter=',')[:,3:].squeeze()
 nc3 = np.genfromtxt(os.path.join(folder_3,"ES_GGM.nc.final.txt"), delimiter=',')[:,3:].squeeze()
 nc4 = np.genfromtxt(os.path.join(folder_4,"ES_GGM.nc.final.txt"), delimiter=',')[:,3:].squeeze()
@@ -52,9 +57,19 @@ nf2 = np.genfromtxt(os.path.join(folder_2,"ES_GGM.nf.final.txt"), delimiter=',')
 nf3 = np.genfromtxt(os.path.join(folder_3,"ES_GGM.nf.final.txt"), delimiter=',')[:,3:].squeeze()/1000
 nf4 = np.genfromtxt(os.path.join(folder_4,"ES_GGM.nf.final.txt"), delimiter=',')[:,3:].squeeze()/1000
 
+nc_g1 = np.genfromtxt(os.path.join(folder_g1,"ES_GGM.nc.final.txt"), delimiter=',')[:,3:].squeeze()
+nc_g2 = np.genfromtxt(os.path.join(folder_g2,"ES_GGM.nc.final.txt"), delimiter=',')[:,3:].squeeze()
+nc_g3 = np.genfromtxt(os.path.join(folder_g3,"ES_GGM.nc.final.txt"), delimiter=',')[:,3:].squeeze()
+nc_g4 = np.genfromtxt(os.path.join(folder_g4,"ES_GGM.nc.final.txt"), delimiter=',')[:,3:].squeeze()
+
+nf_g1 = np.genfromtxt(os.path.join(folder_g1,"ES_GGM.nf.final.txt"), delimiter=',')[:,3:].squeeze()/1000
+nf_g2 = np.genfromtxt(os.path.join(folder_g2,"ES_GGM.nf.final.txt"), delimiter=',')[:,3:].squeeze()/1000
+nf_g3 = np.genfromtxt(os.path.join(folder_g3,"ES_GGM.nf.final.txt"), delimiter=',')[:,3:].squeeze()/1000
+nf_g4 = np.genfromtxt(os.path.join(folder_g4,"ES_GGM.nf.final.txt"), delimiter=',')[:,3:].squeeze()/1000
+
 k = 8  # choose the channel index you want
-Z = [ne1[k::11], nc2[k::11], nc3[k::11], nc4[k::11]]
-E = [nf1[k::11], nf2[k::11], nf3[k::11], nf4[k::11]]
+Z = [nc1[k::11], nc2[k::11], nc3[k::11], nc4[k::11], nc_g1[k::11], nc_g2[k::11], nc_g3[k::11], nc_g4[k::11]]
+E = [nf1[k::11], nf2[k::11], nf3[k::11], nf4[k::11], nf_g1[k::11], nf_g2[k::11], nf_g3[k::11], nf_g4[k::11]]
     
 # print(data_list)
 
@@ -66,19 +81,19 @@ lines = []
 
 xlabels = [r'$Z$',r'$\mathbb{E}[\mathbf{1}_{\{r_k < \hat{r}\}}]$']
 
-markers = ['x','o','+','s','d']
+markers = ['x','o','+','s']
 
 
 
-data_list = Z + E  # 8 items total
+data_list = Z + E 
 # Plot
 lines = []
 for i in range(2):
-    for j in range(4):
-        d = data_list[i*4 + j]
+    for j in range(8):
+        d = data_list[i*8 + j]
         data_sorted = np.sort(d)
         cdf = np.arange(1, len(data_sorted) + 1) / len(data_sorted)
-        line, = axs[i].plot(data_sorted, cdf, marker=markers[j], markevery=25, linewidth=1.25, markerfacecolor='none')
+        line, = axs[i].plot(data_sorted, cdf, marker=markers[j%4], markevery=25, linewidth=1.25, markerfacecolor='none',color='blue' if j < 4 else 'orange')
         lines.append(line)
         
     axs[i].set_xlabel(xlabels[i])
@@ -95,15 +110,15 @@ for i in range(2):
         axs[i].set_xlim(10, 50)
         axs[i].set_xticks([20,30,40,50])     
     if i == 1:
-        axs[i].set_xlim(0, 0.04)
-        axs[i].set_xticks([0,0.02,0.04])      
-        axs[i].set_xticklabels(['0','0.02','0.04'])
+        axs[i].set_xlim(0, 0.01)
+        axs[i].set_xticks([0,0.005,0.01])      
+        axs[i].set_xticklabels(['0','0.005','0.01'])
 
-    axs[i].set_position([0.175+0.425*i, 0.195, 0.325, 0.665])
+    axs[i].set_position([0.15+0.425*i, 0.15, 0.375, 0.525])
     axs[i].grid(True)
 
 # Add a legend
-fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.175, 0.875, 0.75, 0.085), ncol = 4 , borderaxespad=0.1,handletextpad=0.3,handlelength=1.2,fancybox=True, framealpha=1,mode='expand' )
+fig.legend(lines, data_name_list ,fontsize=FONT_SIZE, loc='lower left', bbox_to_anchor=(0.15, 0.7, 0.8, 0.15), ncol = 2 , borderaxespad=0.1,handletextpad=0.3,handlelength=1.2,fancybox=True, framealpha=1,mode='expand' )
 # axs[0].legend(fontsize=8, loc='lower left', bbox_to_anchor=(0, 1.02, 5,0.1), ncol=3,borderaxespad=0.)
 # plt.subplots_adjust(left=0.175, right=0.95,bottom=0.175,top=0.95)
 

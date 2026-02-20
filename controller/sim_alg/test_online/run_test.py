@@ -7,9 +7,9 @@ from working_dir_path import *
 CTRL_PATH = get_controller_path()
 PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_LIST = [
-"test_mobile_ae.py",
-"test_mobile_hf_nft.py",
-"test_mobile_hf.py"
+# "test_online_static_channel_filtering_2_hg_chg.py",
+"test_online_static_channel_filtering_3_hg_chg.py",
+"test_online_static_channel_filtering_4_hg_chg.py"
 ]
 
 CMD_LIST = []
